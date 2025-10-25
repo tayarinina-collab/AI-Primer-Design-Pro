@@ -1,11 +1,11 @@
 import streamlit as st
 
-# ---------- App Config ----------
+# ---------- CONFIG ----------
 st.set_page_config(page_title="AI Primer Design Pro", page_icon="🧬", layout="wide")
 
-# ---------- Sidebar ----------
+# ---------- SIDEBAR ----------
 with st.sidebar:
-    st.markdown("### 🧬 AI Primer Design Pro")
+    st.markdown("### 🧬 **AI Primer Design Pro**")
 
     # Theme toggle inside sidebar
     if "theme" not in st.session_state:
@@ -14,42 +14,45 @@ with st.sidebar:
     toggle = st.toggle("🌗 Dark / Light Mode", value=(st.session_state["theme"] == "Dark"))
     st.session_state["theme"] = "Dark" if toggle else "Light"
 
-    # Sidebar module list (numbered)
+    # Module list (with emojis)
     st.markdown("---")
-    st.markdown("### ⚙️ Funktionen / Modules")
+    st.markdown("### 🧪 Funktionen / Modules")
 
     modules = [
-        "1️⃣ Sequence Management",
-        "2️⃣ Primer Design & PCR Tools",
-        "3️⃣ Batch Processing",
-        "4️⃣ Cloning & Assembly Tools",
-        "5️⃣ Protein Tools",
-        "6️⃣ Database & Reference Integration",
-        "7️⃣ Alignment & Phylogeny",
-        "8️⃣ AI Learning & Chatbot System",
-        "9️⃣ Auto-Report & Visualization",
-        "🔟 File Management & Collaboration",
-        "11️⃣ KI-Innovation & Learning-System",
-        "12️⃣ Cloud Sync & Offline Cache",
-        "13️⃣ Bioinformatics APIs & Integrations",
-        "14️⃣ Settings & User Profiles"
+        "🧬 Sequence Management",
+        "🧪 Primer Design & PCR Tools",
+        "⚙️ Batch Processing",
+        "🧫 Cloning & Assembly Tools",
+        "💪 Protein Tools",
+        "🔗 Database & Reference Integration",
+        "🌿 Alignment & Phylogeny",
+        "🤖 AI Learning & Chatbot System",
+        "📊 Auto-Report & Visualization",
+        "🗂️ File Management & Collaboration",
+        "🧠 KI-Innovation & Learning-System",
+        "☁️ Cloud Sync & Offline Cache",
+        "🔬 Bioinformatics APIs & Integrations",
+        "⚙️ Settings & User Profiles"
     ]
 
     for item in modules:
         st.markdown(f"- {item}")
 
-# ---------- Theme Colors ----------
+# ---------- COLORS ----------
 if st.session_state["theme"] == "Dark":
-    bg_color = "#0D1117"
+    bg_color = "#0D1117"        # Dark background
+    sidebar_color = "#161B22"   # Dark sidebar
     text_color = "#FFFFFF"
 else:
-    bg_color = "#F5F7FA"
+    bg_color = "#F5F7FA"        # Light background
+    sidebar_color = "#FFFFFF"   # Light sidebar
     text_color = "#000000"
 
-# ---------- Custom CSS ----------
+# ---------- CUSTOM CSS ----------
 st.markdown(
     f"""
     <style>
+    /* General background + text */
     body, .stApp {{
         background-color: {bg_color};
         color: {text_color};
@@ -58,6 +61,19 @@ st.markdown(
     h1, h2, h3, p, li, label {{
         color: {text_color};
     }}
+
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {{
+        background-color: {sidebar_color};
+        color: {text_color};
+        border-right: 1px solid rgba(255,255,255,0.1);
+        padding-left: 10px;
+    }}
+    .stSidebar .stMarkdown, .stSidebar p, .stSidebar li, .stSidebar label {{
+        color: {text_color} !important;
+    }}
+
+    /* Center alignment for main content */
     .center-container {{
         text-align: center;
         padding-top: 60px;
@@ -74,10 +90,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ---------- Language Toggle ----------
+# ---------- LANGUAGE TOGGLE ----------
 lang = st.radio("Language / Sprache", ["🇩🇪 Deutsch", "🇬🇧 English"], horizontal=True)
 
-# ---------- Main Center Content ----------
+# ---------- CENTERED INTRO TEXT ----------
 st.markdown("<div class='center-container'>", unsafe_allow_html=True)
 
 if lang == "🇩🇪 Deutsch":
