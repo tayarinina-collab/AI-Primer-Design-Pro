@@ -1,50 +1,50 @@
 import streamlit as st
-from modules.sequence_tools import compute_basic_properties, find_orfs, find_motifs, gc_profile
-from modules.ai_assistant import interpret_sequence
-from modules.ui_layout import set_theme
+from Bio.SeqUtils import GC
+from Bio.Seq import Seq
+import pandas as pd
 import matplotlib.pyplot as plt
+from io import StringIO
 
 def run_sequence_management():
-    set_theme()
-    lang = st.radio("Language / Sprache", ["🇩🇪 Deutsch", "🇬🇧 English"], horizontal=True)
+    st.header("🧬 Sequence Management")
+    st.caption("Analyse und Verwaltung von DNA-, RNA- oder Protein-Sequenzen")
 
-    st.title("🧬 Sequence Management")
-    st.markdown("Upload or paste your sequence below:" if lang == "🇬🇧 English" else "Lade deine Sequenz hoch oder füge sie unten ein:")
+    # Upload oder Texteingabe
+    uploaded_file = st.file_uploader("Datei hochladen (FASTA, GenBank, TXT)", type=["fasta", "txt", "gb"])
+    text_input = st.text_area("Oder Sequenz direkt einfügen:", height=150)
 
-    uploaded_file = st.file_uploader("Upload File", type=["fasta", "gb", "txt"])
-    seq_input = st.text_area("🧫 Sequence Input")
-
+    sequence_data = ""
     if uploaded_file:
-        seq = uploaded_file.read().decode("utf-8")
+        sequence_data = uploaded_file.getvalue().decode("utf-8")
+    elif text_input.strip():
+        sequence_data = text_input.strip()
+
+    if sequence_data:
+        st.subheader("🔍 Sequenzanalyse")
+        seq = Seq(sequence_data.replace("\n", "").replace(" ", "").upper())
+
+        # Basiseigenschaften
+        seq_type = "Protein" if set(seq) <= set("ACDEFGHIKLMNPQRSTVWY") else "RNA" if "U" in seq else "DNA"
+        length = len(seq)
+        gc_content = GC(seq) if seq_type in ["DNA", "RNA"] else "N/A"
+
+        # Anzeige der Basisinformationen
+        st.write(f"**Sequenztyp:** {seq_type}")
+        st.write(f"**Länge:** {length} bp / aa")
+        st.write(f"**GC-Gehalt:** {gc_content}%")
+
+        # GC-Profilplot
+        if seq_type in ["DNA", "RNA"]:
+            gc_profile = [GC(seq[i:i+50]) for i in range(0, len(seq)-49, 50)]
+            fig, ax = plt.subplots()
+            ax.plot(gc_profile)
+            ax.set_xlabel("Position (bp)")
+            ax.set_ylabel("GC (%)")
+            ax.set_title("GC-Profil")
+            st.pyplot(fig)
+
+        # Exportoptionen
+        st.download_button("📥 Exportiere als FASTA", data=str(seq), file_name="sequence.fasta")
+        st.success("✅ Analyse abgeschlossen.")
     else:
-        seq = seq_input.strip()
-
-    if seq:
-        st.markdown("---")
-        st.subheader("🧩 Sequence Analysis / Sequenzanalyse")
-
-        props = compute_basic_properties(seq)
-        st.write(props)
-
-        orfs = find_orfs(seq)
-        motifs = find_motifs(seq)
-        st.write("📍 ORFs:", orfs)
-        st.write("🔎 Motifs:", motifs)
-
-        # GC Profile Plot
-        df = gc_profile(seq)
-        fig, ax = plt.subplots()
-        ax.plot(df["Window"], df["GC%"])
-        ax.set_xlabel("Window")
-        ax.set_ylabel("GC%")
-        ax.set_title("GC Profile")
-        st.pyplot(fig)
-
-        # KI-Assistent
-        st.markdown("### 🤖 KI-Assistent / AI Assistant")
-        with st.spinner("Analysiere Sequenz..."):
-            result = interpret_sequence(seq, lang="DE" if lang == "🇩🇪 Deutsch" else "EN")
-        st.success(result)
-
-        # Export
-        st.download_button("⬇️ Export as FASTA", data=seq, file_name="sequence.fasta")
+        st.info("Bitte Sequenz hochladen oder einfügen, um zu starten.")
