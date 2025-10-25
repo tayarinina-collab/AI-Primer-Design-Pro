@@ -1,0 +1,8 @@
+
+/* Simple clean lab style */
+:root { --primary: #0f4c81; --accent: #8aa6c1; }
+.block-container {max-width: 1200px !important;}
+h1, h2, h3 { color: var(--primary); }
+.st-bw { background: #f7fafc; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+.small { font-size: 0.9rem; color: #4a5568; }
+.badge { display:inline-block; padding: .25rem .5rem; border-radius:.5rem; background:#edf2f7; margin-right:.25rem; }
