@@ -4,10 +4,13 @@ def set_theme():
     if "theme" not in st.session_state:
         st.session_state["theme"] = "Light"
 
-    toggle = st.sidebar.toggle(
+ import random
+unique_key = f"theme_toggle_{random.randint(1000,9999)}"
+
+toggle = st.sidebar.toggle(
     "🌗 Dark / Light Mode",
     value=(st.session_state.get("theme") == "dark"),
-    key="theme_toggle"
+    key=unique_key
 )
     st.session_state["theme"] = "Dark" if toggle else "Light"
 
