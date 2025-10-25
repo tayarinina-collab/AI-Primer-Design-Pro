@@ -1,5 +1,0 @@
-streamlit
-biopython
-matplotlib
-pandas
-openai
