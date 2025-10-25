@@ -26,6 +26,13 @@ st.sidebar.markdown("---")
 
 # --- Sprachumschalter ---
 language = st.sidebar.radio("🌍 Sprache / Language", ["🇩🇪 Deutsch", "🇬🇧 English"])
+import streamlit as st
+
+def run_primer_design():
+    st.title("🧫 Primer Design")
+    st.info("Das Primer-Design-Modul wird hier integriert.")
+    st.markdown("⚙️ Modul-Status: Platzhalter (noch in Entwicklung).")
+
 
 st.sidebar.markdown("---")
 
