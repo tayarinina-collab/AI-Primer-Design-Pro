@@ -59,3 +59,8 @@ def render():
                 prod = res.get(f"PRIMER_PAIR_{i}_PRODUCT_SIZE", "?")
                 st.write(f"Pair {i+1} - product {prod} bp")
                 st.code(f"F: {left}\nR: {right}")
+                import streamlit as st
+
+def run_primer_design():
+    st.title("🧬 Primer Design Modul")
+    st.markdown("Dies ist das Primer Design Modul.")
