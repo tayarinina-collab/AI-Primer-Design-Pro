@@ -1,4 +1,6 @@
 import streamlit as st
+
+# --- Importiere alle Module ---
 from modules.sequence_management import run_sequence_management
 from modules.primer_design import run_primer_design
 from modules.in_silico_pcr import run_in_silico_pcr
@@ -6,15 +8,28 @@ from modules.protein_tools import run_protein_tools
 from modules.plasmid_designer import run_plasmid_designer
 from modules.ui_layout import set_theme
 
-# --- Sidebar Navigation ---
-st.set_page_config(page_title="AI Primer Design Pro", layout="wide", page_icon="🧬")
+# --- Seiteneinstellungen ---
+st.set_page_config(
+    page_title="AI Primer Design Pro",
+    page_icon="🧬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-set_theme()  # Dark/Light Theme Setup
+# --- Theme Setup ---
+set_theme()  # Schaltet zwischen Light und Dark Mode
 
+# --- Sidebar Titel ---
 st.sidebar.title("🧬 AI Primer Design Pro")
 st.sidebar.markdown("**Intelligente Bioinformatik-Plattform für moderne Labore**")
+st.sidebar.markdown("---")
 
-# Navigation: Module-Übersicht
+# --- Sprachumschalter ---
+language = st.sidebar.radio("🌍 Sprache / Language", ["🇩🇪 Deutsch", "🇬🇧 English"])
+
+st.sidebar.markdown("---")
+
+# --- Navigationsmenü ---
 menu = st.sidebar.radio(
     "🧩 Module auswählen / Select Module",
     [
@@ -22,38 +37,52 @@ menu = st.sidebar.radio(
         "🧬 Sequence Management",
         "🧫 Primer Design",
         "🧪 In-Silico PCR",
-        "🧫 Protein Tools",
+        "🔬 Protein Tools",
         "🧫 Plasmid Designer"
     ],
 )
 
-# --- Hauptansicht ---
+# --- HAUPTINHALT ---
 if menu == "🏠 Übersicht":
-    st.title("Willkommen in AI Primer Design Pro 🧬")
-    st.markdown("""
-    **Deutsch 🇩🇪**  
-    Willkommen bei *AI Primer Design Pro*!  
-    Diese Plattform kombiniert **Bioinformatik**, **KI-Analyse** und **modernes Labor-Design**,  
-    um deine molekularbiologischen Workflows zu automatisieren.
+    if language == "🇩🇪 Deutsch":
+        st.title("Willkommen in AI Primer Design Pro 🧬")
+        st.markdown("""
+        Willkommen bei **AI Primer Design Pro**,  
+        deiner intelligenten Bioinformatik-Plattform für DNA-, RNA- und Protein-Analysen.  
+        Hier kombinieren sich **KI**, **Laborautomatisierung** und **visuelle Werkzeuge**,  
+        um Forschungsprozesse zu vereinfachen und zu beschleunigen.  
+        """)
+        st.info("🌗 Tipp: Du kannst im Seitenmenü zwischen **Dark- und Light-Mode** wechseln.")
+    else:
+        st.title("Welcome to AI Primer Design Pro 🧬")
+        st.markdown("""
+        Welcome to **AI Primer Design Pro**,  
+        your intelligent bioinformatics platform for DNA, RNA, and protein analysis.  
+        Combining **AI**, **automation**, and **visual lab tools**  
+        to simplify and accelerate research workflows.  
+        """)
+        st.info("🌗 Tip: You can switch between **Dark and Light mode** in the sidebar.")
 
-    **English 🇬🇧**  
-    Welcome to *AI Primer Design Pro*!  
-    This platform unites **bioinformatics**, **AI analysis**, and **modern lab design**  
-    for seamless automation of molecular biology workflows.
-    """)
-
-# --- Modulaufrufe ---
+# --- SEQUENCE MANAGEMENT ---
 elif menu == "🧬 Sequence Management":
     run_sequence_management()
 
+# --- PRIMER DESIGN ---
 elif menu == "🧫 Primer Design":
     run_primer_design()
 
+# --- IN-SILICO PCR ---
 elif menu == "🧪 In-Silico PCR":
     run_in_silico_pcr()
 
-elif menu == "🧫 Protein Tools":
+# --- PROTEIN TOOLS ---
+elif menu == "🔬 Protein Tools":
     run_protein_tools()
 
+# --- PLASMID DESIGNER ---
 elif menu == "🧫 Plasmid Designer":
     run_plasmid_designer()
+
+# --- Footer ---
+st.markdown("---")
+st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.0 · Zweisprachig DE/EN")
