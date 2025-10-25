@@ -4,7 +4,11 @@ def set_theme():
     if "theme" not in st.session_state:
         st.session_state["theme"] = "Light"
 
-    toggle = st.sidebar.toggle("🌗 Dark / Light Mode", value=(st.session_state["theme"] == "Dark"))
+    toggle = st.sidebar.toggle(
+    "🌗 Dark / Light Mode",
+    value=(st.session_state.get("theme") == "dark"),
+    key="theme_toggle"
+)
     st.session_state["theme"] = "Dark" if toggle else "Light"
 
     bg_color = "#0D1117" if st.session_state["theme"] == "Dark" else "#F5F7FA"
