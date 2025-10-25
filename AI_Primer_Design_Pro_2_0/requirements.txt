@@ -1,7 +1,0 @@
-# AI Primer Design Pro Dependencies
-streamlit>=1.37
-biopython>=1.83
-matplotlib>=3.9
-pandas>=2.2
-openai>=1.30
-numpy>=1.26
