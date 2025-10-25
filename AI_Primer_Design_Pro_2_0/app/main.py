@@ -1,18 +1,52 @@
 import streamlit as st
 
-# ------------------ CONFIG ------------------
+# ---------- App Config ----------
 st.set_page_config(page_title="AI Primer Design Pro", page_icon="🧬", layout="wide")
 
-# ------------------ THEME TOGGLE ------------------
-if "theme" not in st.session_state:
-    st.session_state["theme"] = "Light"
+# ---------- Sidebar ----------
+with st.sidebar:
+    st.markdown("### 🧬 AI Primer Design Pro")
 
-toggle = st.toggle("🌗 Dark / Light Mode", value=(st.session_state["theme"] == "Dark"))
-st.session_state["theme"] = "Dark" if toggle else "Light"
+    # Theme toggle inside sidebar
+    if "theme" not in st.session_state:
+        st.session_state["theme"] = "Light"
 
-bg_color = "#0D1117" if st.session_state["theme"] == "Dark" else "#F5F7FA"
-text_color = "#FFFFFF" if st.session_state["theme"] == "Dark" else "#000000"
+    toggle = st.toggle("🌗 Dark / Light Mode", value=(st.session_state["theme"] == "Dark"))
+    st.session_state["theme"] = "Dark" if toggle else "Light"
 
+    # Sidebar module list (numbered)
+    st.markdown("---")
+    st.markdown("### ⚙️ Funktionen / Modules")
+
+    modules = [
+        "1️⃣ Sequence Management",
+        "2️⃣ Primer Design & PCR Tools",
+        "3️⃣ Batch Processing",
+        "4️⃣ Cloning & Assembly Tools",
+        "5️⃣ Protein Tools",
+        "6️⃣ Database & Reference Integration",
+        "7️⃣ Alignment & Phylogeny",
+        "8️⃣ AI Learning & Chatbot System",
+        "9️⃣ Auto-Report & Visualization",
+        "🔟 File Management & Collaboration",
+        "11️⃣ KI-Innovation & Learning-System",
+        "12️⃣ Cloud Sync & Offline Cache",
+        "13️⃣ Bioinformatics APIs & Integrations",
+        "14️⃣ Settings & User Profiles"
+    ]
+
+    for item in modules:
+        st.markdown(f"- {item}")
+
+# ---------- Theme Colors ----------
+if st.session_state["theme"] == "Dark":
+    bg_color = "#0D1117"
+    text_color = "#FFFFFF"
+else:
+    bg_color = "#F5F7FA"
+    text_color = "#000000"
+
+# ---------- Custom CSS ----------
 st.markdown(
     f"""
     <style>
@@ -21,12 +55,12 @@ st.markdown(
         color: {text_color};
         font-family: 'Inter', sans-serif;
     }}
-    h1, h2, h3, p {{
+    h1, h2, h3, p, li, label {{
         color: {text_color};
     }}
     .center-container {{
         text-align: center;
-        padding-top: 40px;
+        padding-top: 60px;
     }}
     .subtitle {{
         font-size: 18px;
@@ -40,36 +74,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ------------------ LANGUAGE TOGGLE ------------------
+# ---------- Language Toggle ----------
 lang = st.radio("Language / Sprache", ["🇩🇪 Deutsch", "🇬🇧 English"], horizontal=True)
 
-# ------------------ SIDEBAR: MODULE LIST ------------------
-with st.sidebar:
-    st.markdown("### 🧬 **AI Primer Design Pro**")
-    st.write("**Module / Funktionen:**")
-    st.markdown("---")
-
-    modules = [
-        ("🧬 Sequence Management", "Sequenzverwaltung / Sequence Management"),
-        ("🧪 Primer Design & PCR Tools", "Primer-Entwurf & PCR-Simulation"),
-        ("⚙️ Batch Processing", "Automatisierte Analyse mehrerer Proben"),
-        ("🧫 Cloning & Assembly Tools", "Klonierungs- & Assemblierungs-Assistent"),
-        ("💪 Protein Tools", "Protein-Analyse & 3D-Strukturvisualisierung"),
-        ("🔗 Database & Reference Integration", "NCBI / UniProt / NEB Verknüpfung"),
-        ("🌿 Alignment & Phylogeny", "Sequenzvergleich & phylogenetische Bäume"),
-        ("🤖 AI Learning & Chatbot System", "KI-gestützter Labor-Assistent"),
-        ("📊 Auto-Report & Visualization", "Automatische Auswertung & Plots"),
-        ("🗂️ File Management & Collaboration", "Dateiverwaltung & Team-Freigabe"),
-        ("🧠 KI-Innovation & Learning-System", "Adaptives Lern- und Trainingssystem"),
-        ("☁️ Cloud Sync & Offline Cache", "Sichere Daten-Synchronisation"),
-        ("🔬 Bioinformatics APIs & Integrations", "APIs für BLAST, Primer3, PDB usw."),
-        ("⚙️ Settings & User Profiles", "Einstellungen, Themes und Profile")
-    ]
-
-    for emoji, desc in modules:
-        st.markdown(f"**{emoji}** {desc}")
-
-# ------------------ MAIN CENTER CONTENT ------------------
+# ---------- Main Center Content ----------
 st.markdown("<div class='center-container'>", unsafe_allow_html=True)
 
 if lang == "🇩🇪 Deutsch":
