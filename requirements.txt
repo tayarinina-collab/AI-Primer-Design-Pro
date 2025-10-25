@@ -1,0 +1,10 @@
+# runtime environment
+streamlit>=1.37
+biopython>=1.83
+primer3-py>=0.7.1
+plotly>=5.22
+pandas>=2.2
+numpy>=1.26
+requests>=2.32
+python-dotenv>=1.0
+py3Dmol>=2.1.0
