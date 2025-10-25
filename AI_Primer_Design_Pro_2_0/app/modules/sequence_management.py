@@ -1,5 +1,5 @@
 import streamlit as st
-from Bio.SeqUtils import GC
+from Bio.SeqUtils import gc_fraction
 from Bio.Seq import Seq
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ def run_sequence_management():
         # Basiseigenschaften
         seq_type = "Protein" if set(seq) <= set("ACDEFGHIKLMNPQRSTVWY") else "RNA" if "U" in seq else "DNA"
         length = len(seq)
-        gc_content = GC(seq) if seq_type in ["DNA", "RNA"] else "N/A"
+        gc_content = round(gc_fraction(seq) * 100, 2) if seq_type in ["DNA", "RNA"] else "N/A"
 
         # Anzeige der Basisinformationen
         st.write(f"**Sequenztyp:** {seq_type}")
@@ -35,7 +35,8 @@ def run_sequence_management():
 
         # GC-Profilplot
         if seq_type in ["DNA", "RNA"]:
-            gc_profile = [GC(seq[i:i+50]) for i in range(0, len(seq)-49, 50)]
+            window = 50
+            gc_profile = [round(gc_fraction(seq[i:i+window]) * 100, 2) for i in range(0, len(seq)-window, window)]
             fig, ax = plt.subplots()
             ax.plot(gc_profile)
             ax.set_xlabel("Position (bp)")
