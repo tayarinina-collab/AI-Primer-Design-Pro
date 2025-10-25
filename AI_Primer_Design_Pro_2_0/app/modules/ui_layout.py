@@ -1,29 +1,36 @@
 import streamlit as st
+import random
 
 def set_theme():
-    if "theme" not in st.session_state:
-        st.session_state["theme"] = "Light"
+    # Eindeutiger Key, um Streamlit-Fehler zu vermeiden
+    unique_key = f"theme_toggle_{random.randint(1000,9999)}"
 
- import random
-unique_key = f"theme_toggle_{random.randint(1000,9999)}"
+    # Sidebar Theme Toggle
+    st.sidebar.markdown("## 🧪 Theme & Sprache")
+    dark_mode = st.sidebar.toggle("🌗 Dark / Light Mode", key=unique_key)
 
-toggle = st.sidebar.toggle(
-    "🌗 Dark / Light Mode",
-    value=(st.session_state.get("theme") == "dark"),
-    key=unique_key
-)
-    st.session_state["theme"] = "Dark" if toggle else "Light"
+    # Theme speichern
+    if dark_mode:
+        st.session_state["theme"] = "dark"
+        st.markdown(
+            """
+            <style>
+            body {background-color: #0E1117; color: white;}
+            .stButton button {background-color: #1E1E1E; color: white;}
+            </style>
+            """, unsafe_allow_html=True)
+    else:
+        st.session_state["theme"] = "light"
+        st.markdown(
+            """
+            <style>
+            body {background-color: white; color: black;}
+            .stButton button {background-color: #E0E0E0; color: black;}
+            </style>
+            """, unsafe_allow_html=True)
 
-    bg_color = "#0D1117" if st.session_state["theme"] == "Dark" else "#F5F7FA"
-    text_color = "#FFFFFF" if st.session_state["theme"] == "Dark" else "#000000"
-
-    st.markdown(
-        f"""
-        <style>
-        body, .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-        h1, h2, h3, p, li, label {{ color: {text_color}; }}
-        section[data-testid="stSidebar"] {{ background-color: {bg_color}; }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+def set_language():
+    # Sprachwahl (Deutsch/Englisch)
+    st.sidebar.markdown("## 🌍 Sprache / Language")
+    lang = st.sidebar.radio("Wähle Sprache:", ["Deutsch", "English"], key=f"lang_{random.randint(1000,9999)}")
+    st.session_state["lang"] = "DE" if lang == "Deutsch" else "EN"
