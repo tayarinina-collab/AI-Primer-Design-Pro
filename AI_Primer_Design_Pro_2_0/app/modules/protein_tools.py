@@ -168,18 +168,13 @@ def run_protein_tools():
             if not PDB_OK:
                 st.warning("⚠️ py3Dmol ist nicht installiert. Bitte `pip install py3Dmol` ausführen.")
             elif not pdb_id:
-                st.info("Bitte PDB-ID eingeben.")
-            else:
-                pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
-                try:
-                    pdb_data = requests.get(pdb_url).text
-                    viewer = py3Dmol.view(width=600, height=400)
-                    viewer.addModel(pdb_data, "pdb")
-                    viewer.setStyle({"cartoon": {"color": "spectrum"}})
-                    viewer.zoomTo()
-                    st.components.v1.html(viewer._make_html(), height=450)
-                except Exception as e:
-                    st.error(f"Fehler beim Laden: {e}")
+    st.info("Bitte PDB-ID eingeben.")
+else:
+    try:
+        pdb_embed_url = f"https://www.rcsb.org/3d-view/{pdb_id}"
+        st.components.v1.iframe(pdb_embed_url, height=600, width=800)
+    except Exception as e:
+        st.error(f"Fehler beim Laden der PDB-Ansicht: {e}")
 
     # ---------- UniProt Annotation ----------
     with tabs[5]:
