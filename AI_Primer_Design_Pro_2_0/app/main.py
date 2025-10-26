@@ -1,6 +1,6 @@
 from modules.primer_design import run_primer_design
+from modules.primer_design_advanced import run_primer_design_advanced
 import streamlit as st
-
 # --- Importiere alle Module ---
 from modules.sequence_management import run_sequence_management
 from modules.primer_design import run_primer_design
@@ -37,8 +37,9 @@ menu = st.sidebar.radio(
         "🏠 Übersicht",
         "🧬 Sequence Management",
         "🧫 Primer Design",
-        "🧪 In-Silico PCR",
-        "🔬 Protein Tools",
+        "🧪 Primer Design – Advanced",
+        "🧫 In-Silico PCR",
+        "🧬 Protein Tools",
         "🧫 Plasmid Designer"
     ],
 )
@@ -71,6 +72,8 @@ elif menu == "🧬 Sequence Management":
 # --- PRIMER DESIGN ---
 elif menu == "🧫 Primer Design":
     run_primer_design()
+elif menu == "🧪 Primer Design – Advanced":
+    run_primer_design_advanced()
 
 # --- IN-SILICO PCR ---
 elif menu == "🧪 In-Silico PCR":
