@@ -1,3 +1,4 @@
+from modules.cloning_tools import run_cloning_tools
 from modules.primer_design import run_primer_design
 from modules.primer_design_advanced import run_primer_design_advanced
 import streamlit as st
@@ -38,7 +39,7 @@ menu = st.sidebar.radio(
         "🧬 Sequence Management",
         "🧫 Primer Design",
         "🧪 Primer Design – Advanced",
-        "🧫 In-Silico PCR",
+        ""🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
         "🧫 Plasmid Designer"
     ],
@@ -76,8 +77,8 @@ elif menu == "🧪 Primer Design – Advanced":
     run_primer_design_advanced()
 
 # --- IN-SILICO PCR ---
-elif menu == "🧪 In-Silico PCR":
-    run_in_silico_pcr()
+elif menu == "🧫 Cloning & Assembly Tools":
+    run_cloning_tools()
 
 # --- PROTEIN TOOLS ---
 elif menu == "🔬 Protein Tools":
