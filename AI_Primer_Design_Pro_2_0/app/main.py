@@ -82,7 +82,7 @@ elif menu == "🧫 Cloning & Assembly Tools":
     run_cloning_tools()
 
 # --- PROTEIN TOOLS ---
-elif menu == "🔬 Protein Tools":
+elif menu == "Protein Tools":
     run_protein_tools()
 
 # --- PLASMID DESIGNER ---
