@@ -29,6 +29,18 @@ if theme_mode == "🌙 Dark Mode":
         body { background-color: #0e1117; color: white; }
         .stApp { background-color: #0e1117; color: white; }
         .stSidebar { background-color: #111; }
+        h1, h2, h3, h4, h5, h6, p, div, span { color: white !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """
+        <style>
+        body { background-color: #f8f9fa; color: #111; }
+        .stApp { background-color: #f8f9fa; color: #111; }
+        .stSidebar { background-color: #fff; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -37,9 +49,7 @@ if theme_mode == "🌙 Dark Mode":
 # --- App Header ---
 st.markdown(
     """
-    <h1 style='text-align:center;'>
-        🧬 AI Primer Design Pro
-    </h1>
+    <h1 style='text-align:center;'>🧬 AI Primer Design Pro</h1>
     <p style='text-align:center; font-size:18px;'>
         Intelligente Bioinformatik-Plattform für DNA-, RNA- & Protein-Analysen.<br>
         Combining AI, Automation & Visualization for smarter research.
@@ -58,7 +68,7 @@ modules = {
     "🧪 Primer Design – Advanced": "primer_design_advanced",
     "🧫 Cloning & Assembly Tools": "cloning_tools",
     "🧬 Protein Tools": "protein_tools",
-    "🧫 Database & Reference Integration": "database_integration.py",
+    "🧫 Database & Reference Integration": "database_integration",  # ✅ korrigiert
     "🧫 Plasmid Designer": "plasmid_designer",
     "📊 Reports": "reports",
     "⚙️ Settings / About": "settings_about",
@@ -66,12 +76,12 @@ modules = {
 
 choice = st.sidebar.radio("🔬 Select Module", list(modules.keys()))
 
-# --- Load selected module dynamically ---
+# --- Dynamisches Modul-Laden ---
 try:
     selected_module = modules[choice]
     module = importlib.import_module(f"modules.{selected_module}")
 
-    # Each module must contain a function run_<modulename>()
+    # Jede Moduldatei muss eine Funktion run_<modulname>() enthalten
     run_function_name = f"run_{selected_module}"
     if hasattr(module, run_function_name):
         getattr(module, run_function_name)()
