@@ -5,10 +5,15 @@ import streamlit as st
 import importlib
 import sys, os
 
-# --- Arbeitsverzeichnis für Modulimporte ---
-sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
+# --- Pfade sauber setzen: APP-Ordner auf sys.path, NICHT der modules-Ordner ---
+APP_DIR = os.path.dirname(__file__)                 # .../app
+ROOT_DIR = os.path.dirname(APP_DIR)                 # .../AI_Primer_Design_Pro_2_0
+MODULES_DIR = os.path.join(APP_DIR, "modules")      # .../app/modules
 
-# --- Seiteneinstellungen ---
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)  # wichtig: parent von "modules" auf sys.path
+
+# --- Page configuration ---
 st.set_page_config(
     page_title="AI Primer Design Pro",
     layout="wide",
@@ -67,19 +72,26 @@ modules = {
     "🧪 Primer Design – Advanced": "primer_design_advanced",
     "🧫 Cloning & Assembly Tools": "cloning_tools",
     "🧬 Protein Tools": "protein_tools",
-    "🧫 Database & Reference Integration": "database_integration",  # ✅ korrigiert
+    "🧫 Database & Reference Integration": "database_integration",  # wichtig: ohne .py
     "🧫 Plasmid Designer": "plasmid_designer",
     "📊 Reports": "reports",
     "⚙️ Settings / About": "settings_about",
 }
 
-# --- Modul-Auswahl ---
 choice = st.sidebar.radio("🔬 Select Module", list(modules.keys()))
+
+# --- Debug-Hilfe in der Sidebar (zeigt, was wirklich geladen wird) ---
+try:
+    available = [f for f in os.listdir(MODULES_DIR) if f.endswith(".py")]
+except Exception:
+    available = []
+st.sidebar.caption(f"📂 Lädt: modules.{modules[choice]}")
+st.sidebar.caption(f"🗂️ Dateien in /modules: {', '.join(available) or '—'}")
 
 # --- Dynamisches Laden ---
 try:
     selected_module = modules[choice]
-    module = importlib.import_module(f"modules.{selected_module}")
+    module = importlib.import_module(f"modules.{selected_module}")  # funktioniert nur, wenn APP_DIR auf sys.path ist
 
     run_function_name = f"run_{selected_module}"
     if hasattr(module, run_function_name):
@@ -89,6 +101,9 @@ try:
             f"⚠️ Modul '{choice}' wurde gefunden, "
             f"aber keine Funktion '{run_function_name}()' existiert."
         )
+except ModuleNotFoundError as e:
+    st.error(f"❌ Modul nicht gefunden: {e}\n"
+             f"Prüfe Dateinamen unter {MODULES_DIR} (z. B. database_integration.py).")
 except Exception as e:
     st.error(f"❌ Fehler beim Laden des Moduls '{choice}': {e}")
 
