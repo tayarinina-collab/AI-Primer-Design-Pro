@@ -178,8 +178,8 @@ if PDB_OK:
             st.error(f"Fehler beim Laden der Struktur: {e}")
 else:
     st.warning("⚠️ py3Dmol ist nicht installiert. Bitte `pip install py3Dmol` ausführen.")
-            elif not pdb_id:
-                st.info("Bitte PDB-ID eingeben.")
+          elif not pdb_id:
+    st.error("Bitte PDB-ID eingeben.")
             else:
                 pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
                 try:
