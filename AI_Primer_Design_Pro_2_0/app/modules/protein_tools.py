@@ -82,6 +82,7 @@ def motif_search(seq:str):
             pass
     return results
 
+
 # ---------------- UI -------------------------------------------------------
 
 def run_protein_tools():
@@ -162,33 +163,20 @@ def run_protein_tools():
         st.subheader("3D-Struktur-Viewer (PDB)")
         pdb_id = st.text_input("PDB ID (z. B. 1CRN oder 6M0J)", "")
         if st.button("Struktur anzeigen"):
-           import streamlit.components.v1 as components
+            import streamlit.components.v1 as components
 
-if not PDB_OK:
-    st.warning("⚠️ py3Dmol ist nicht installiert. Bitte `pip install py3Dmol` ausführen.")
-elif not pdb_id:
-    st.info("Bitte PDB-ID eingeben.")
-else:
-    pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
-    try:
-        pdb_data = requests.get(pdb_url).text
-        viewer = py3Dmol.view(width=600, height=400)
-        viewer.addModel(pdb_data, "pdb")
-        viewer.setStyle({'cartoon': {'color': 'spectrum'}})
-        viewer.zoomTo()
-        viewer_html = viewer._make_html()
-        st.components.v1.html(viewer_html, height=400)
-    except Exception as e:
-        st.error(f"Fehler beim Laden: {e}")
+            if not PDB_OK:
+                st.warning("⚠️ py3Dmol ist nicht installiert. Bitte `pip install py3Dmol` ausführen.")
+            elif not pdb_id:
+                st.info("Bitte PDB-ID eingeben.")
             else:
                 pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
                 try:
                     pdb_data = requests.get(pdb_url).text
                     viewer = py3Dmol.view(width=600, height=400)
                     viewer.addModel(pdb_data, "pdb")
-                    viewer.setStyle({"cartoon":{"color":"spectrum"}})
+                    viewer.setStyle({"cartoon": {"color": "spectrum"}})
                     viewer.zoomTo()
-                    viewer.show()
                     st.components.v1.html(viewer._make_html(), height=450)
                 except Exception as e:
                     st.error(f"Fehler beim Laden: {e}")
@@ -206,7 +194,7 @@ else:
                     r = requests.get(url, timeout=10)
                     if r.status_code == 200:
                         lines = r.text.splitlines()
-                        features=[l for l in lines if l.startswith("FT")]
+                        features = [l for l in lines if l.startswith("FT")]
                         st.text_area("UniProt Feature Extract", "\n".join(features), height=300)
                     else:
                         st.warning("Kein Eintrag gefunden.")
