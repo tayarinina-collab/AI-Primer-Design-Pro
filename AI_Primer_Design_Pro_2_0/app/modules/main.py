@@ -72,8 +72,9 @@ modules = {
     "🧪 Primer Design – Advanced": "primer_design_advanced",
     "🧫 Cloning & Assembly Tools": "cloning_tools",
     "🧬 Protein Tools": "protein_tools",
-    "🧫 Database & Reference Integration": "database_integration",  # wichtig: ohne .py
-    "🧫 Plasmid Designer": "plasmid_designer",
+    "🧫 Database & Reference Integration": "database_integration",
+    "🧫 Plasmid Karte": "plasmid_designer",          # ✅ Basic
+    "🧬 Plasmid Plus": "plasmid_plus",              # ✅ Advanced neu
     "📊 Reports": "reports",
     "⚙️ Settings / About": "settings_about",
 }
