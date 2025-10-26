@@ -1,3 +1,4 @@
+from modules.primer_design import run_primer_design
 import streamlit as st
 
 # --- Importiere alle Module ---
