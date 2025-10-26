@@ -8,8 +8,8 @@ from modules.primer_design_advanced import run_primer_design_advanced
 from modules.cloning_tools import run_cloning_tools
 from modules.protein_tools import run_protein_tools
 from modules.plasmid_designer import run_plasmid_designer
-from modules.database_integration import run_database_integration
 from modules.plasmid_plus import run_plasmid_plus
+from modules.database_integration import run_database_integration
 from modules.data_management import run_data_management
 from modules.ui_layout import set_theme
 
@@ -110,4 +110,4 @@ elif menu == "🧬 Data Management":
 
 # --- Footer ---
 st.markdown("---")
-st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.8 · Zweisprachig DE/EN")
+st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.9 · Zweisprachig DE/EN")
