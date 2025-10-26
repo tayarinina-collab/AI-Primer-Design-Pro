@@ -1,3 +1,4 @@
+from modules.protein_tools import run_protein_tools
 from modules.cloning_tools import run_cloning_tools
 from modules.primer_design import run_primer_design
 from modules.primer_design_advanced import run_primer_design_advanced
