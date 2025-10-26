@@ -421,6 +421,109 @@ def run_primer_design_advanced():
             st.write(f"**Tm**: {tm_l:.1f} / {tm_r:.1f} °C · **GC**: {gc_percent(L):.1f}% / {gc_percent(R):.1f}%")
             st.write(f"**ΔG self/cross (kcal/mol)**: {dG_homodimer(L):.2f} / {dG_heterodimer(L,R):.2f}")
             st.success(f"Score (0..1): **{score}**")
+                # ================== Batch Processing (Mehrere Sequenzen) ===========================
+    st.markdown("---")
+    st.subheader("📦 Batch Primer Design (mehrere Targets gleichzeitig)")
+    st.caption("Lädt CSV/Excel mit mehreren Zielsequenzen und entwirft Primer parallel (multiprocessing)")
+
+    upl_batch = st.file_uploader("Batch-Datei (CSV/XLSX mit Spalten: ID, SEQUENCE)", type=["csv", "xlsx"])
+
+    if upl_batch is not None:
+        try:
+            if upl_batch.name.lower().endswith(".xlsx"):
+                df_batch = pd.read_excel(upl_batch)
+            else:
+                df_batch = pd.read_csv(upl_batch)
+
+            if "SEQUENCE" not in df_batch.columns:
+                st.error("⚠️ Datei muss mindestens eine Spalte 'SEQUENCE' enthalten.")
+                st.stop()
+
+            st.success(f"📄 {len(df_batch)} Sequenzen geladen – Batch startet nach Klick auf '🚀 Batch-Design starten'.")
+
+            if st.button("🚀 Batch-Design starten"):
+                import multiprocessing as mp
+
+                def process_row(row):
+                    try:
+                        seq = row["SEQUENCE"].upper().replace("U","T")
+                        result = primer3.bindings.designPrimers(
+                            {"SEQUENCE_ID": str(row.get("ID", "unknown")),
+                             "SEQUENCE_TEMPLATE": seq},
+                            {
+                                "PRIMER_OPT_SIZE": popt,
+                                "PRIMER_MIN_SIZE": pmin,
+                                "PRIMER_MAX_SIZE": pmax,
+                                "PRIMER_OPT_TM": (tm_min+tm_max)/2,
+                                "PRIMER_MIN_TM": tm_min,
+                                "PRIMER_MAX_TM": tm_max,
+                                "PRIMER_MIN_GC": gc_min,
+                                "PRIMER_MAX_GC": gc_max,
+                                "PRIMER_NUM_RETURN": 1,
+                                "PRIMER_PRODUCT_SIZE_RANGE": [list((prod_min, prod_max))]
+                            }
+                        )
+                        left = result.get("PRIMER_LEFT_0_SEQUENCE", "")
+                        right = result.get("PRIMER_RIGHT_0_SEQUENCE", "")
+                        tm_left = result.get("PRIMER_LEFT_0_TM", 0)
+                        tm_right = result.get("PRIMER_RIGHT_0_TM", 0)
+                        gc_left = gc_percent(left)
+                        gc_right = gc_percent(right)
+                        return {
+                            "ID": row.get("ID", "unknown"),
+                            "Left_Primer": left,
+                            "Right_Primer": right,
+                            "Tm_Left": round(tm_left,1),
+                            "Tm_Right": round(tm_right,1),
+                            "GC_Left": round(gc_left,1),
+                            "GC_Right": round(gc_right,1),
+                            "Length_Left": len(left),
+                            "Length_Right": len(right)
+                        }
+                    except Exception as e:
+                        return {"ID": row.get("ID", "error"), "Error": str(e)}
+
+                with st.spinner("⏳ Berechne Primer parallel..."):
+                    pool = mp.Pool(mp.cpu_count())
+                    results = pool.map(process_row, df_batch.to_dict(orient="records"))
+                    pool.close()
+                    pool.join()
+
+                df_results = pd.DataFrame(results)
+                st.success(f"✅ Batch fertig – {len(df_results)} Sequenzen verarbeitet.")
+                st.dataframe(df_results, use_container_width=True)
+
+                # --- Export Optionen ---
+                st.download_button("⬇️ Export als CSV", df_results.to_csv(index=False).encode("utf-8"),
+                                   file_name="batch_primers.csv", mime="text/csv")
+
+                fasta_out = "\n".join([f">{r['ID']}_L\n{r['Left_Primer']}\n>{r['ID']}_R\n{r['Right_Primer']}"
+                                       for r in results if r.get("Left_Primer")])
+                st.download_button("⬇️ Export als FASTA", fasta_out.encode("utf-8"),
+                                   file_name="batch_primers.fasta", mime="text/plain")
+
+                # --- PDF Export (optional) ---
+                try:
+                    from reportlab.lib.pagesizes import A4
+                    from reportlab.pdfgen import canvas
+                    pdf_path = "/tmp/batch_primers.pdf"
+                    c = canvas.Canvas(pdf_path, pagesize=A4)
+                    text = c.beginText(50, 800)
+                    text.setFont("Helvetica", 10)
+                    for _, r in df_results.iterrows():
+                        text.textLine(f"{r['ID']}")
+                        text.textLine(f"Left: {r['Left_Primer']} (Tm {r['Tm_Left']}°C)")
+                        text.textLine(f"Right: {r['Right_Primer']} (Tm {r['Tm_Right']}°C)")
+                        text.textLine("-"*50)
+                    c.drawText(text)
+                    c.save()
+                    with open(pdf_path, "rb") as f:
+                        st.download_button("⬇️ Export als PDF", f, file_name="batch_primers.pdf")
+                except Exception:
+                    st.info("💡 Für PDF-Export: `reportlab` in requirements.txt hinzufügen.")
+
+        except Exception as e:
+            st.error(f"Fehler beim Batch-Import: {e}")
 
     # ================== AI-Zusammenfassung (optional) ========================
     st.markdown("---")
