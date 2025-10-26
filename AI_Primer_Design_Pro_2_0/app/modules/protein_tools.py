@@ -162,8 +162,22 @@ def run_protein_tools():
         st.subheader("3D-Struktur-Viewer (PDB)")
         pdb_id = st.text_input("PDB ID (z. B. 1CRN oder 6M0J)", "")
         if st.button("Struktur anzeigen"):
-            if not PDB_OK:
-                st.warning("py3Dmol nicht installiert – bitte `py3Dmol` in requirements.txt hinzufügen.")
+           import streamlit.components.v1 as components
+
+if PDB_OK:
+    pdb_id = st.text_input("PDB ID (z. B. 1CRN oder 6M0J)", "")
+    if st.button("Struktur anzeigen"):
+        try:
+            pdb_id = pdb_id.strip().upper()
+            view = py3Dmol.view(query=f'pdb:{pdb_id}', width=600, height=450)
+            view.setStyle({'cartoon': {'color': 'spectrum'}})
+            view.zoomTo()
+            html = view._make_html()
+            components.html(html, height=500, width=700)
+        except Exception as e:
+            st.error(f"Fehler beim Laden der Struktur: {e}")
+else:
+    st.warning("⚠️ py3Dmol ist nicht installiert. Bitte `pip install py3Dmol` ausführen.")
             elif not pdb_id:
                 st.info("Bitte PDB-ID eingeben.")
             else:
