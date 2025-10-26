@@ -2,6 +2,7 @@
 import streamlit as st
 
 # --- Module Imports ---
+from modules.reports_export_center import run_reports_export_center
 from modules.ai_learning_chatbot import run_ai_learning_chatbot
 from modules.alignment_phylogeny import run_alignment_phylogeny
 from modules.sequence_management import run_sequence_management
@@ -52,6 +53,7 @@ menu = st.sidebar.radio(
         "🧬 Data Management",
         "🌳 Alignment & Phylogeny",
         "🤖 AI Learning & Chatbot System",
+        "📊 Reports & Export Center",
     ],
 )
 
@@ -118,6 +120,9 @@ elif menu == "🌳 Alignment & Phylogeny":
 
 elif menu == "🤖 AI Learning & Chatbot System":
     run_ai_learning_chatbot()
+
+elif menu == "📊 Reports & Export Center":
+    run_reports_export_center()
 
 # --- Footer ---
 st.markdown("---")
