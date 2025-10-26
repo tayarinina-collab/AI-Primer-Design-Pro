@@ -8,6 +8,9 @@ from modules.primer_design_advanced import run_primer_design_advanced
 from modules.cloning_tools import run_cloning_tools
 from modules.protein_tools import run_protein_tools
 from modules.plasmid_designer import run_plasmid_designer
+from modules.database_integration import run_database_integration
+from modules.plasmid_plus import run_plasmid_plus
+from modules.data_management import run_data_management
 from modules.ui_layout import set_theme
 
 # --- Seiteneinstellungen ---
@@ -33,7 +36,7 @@ st.sidebar.markdown("---")
 # --- Navigation mit visuellen Icons ---
 st.sidebar.markdown("### 🧩 Module auswählen / Select Module")
 menu = st.sidebar.radio(
-    "",
+    "Modul-Liste",
     [
         "🏠 Übersicht",
         "🧬 Sequence Management",
@@ -41,7 +44,10 @@ menu = st.sidebar.radio(
         "🧪 Primer Design – Advanced",
         "🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
-        "🧫 Plasmid Designer"
+        "🧫 Plasmid Designer",
+        "🧬 Plasmid Plus",
+        "🧫 Database & Reference Integration",
+        "🧬 Data Management"
     ],
 )
 
@@ -90,6 +96,18 @@ elif menu == "🧬 Protein Tools":
 elif menu == "🧫 Plasmid Designer":
     run_plasmid_designer()
 
+# --- MODULE: Plasmid Plus ---
+elif menu == "🧬 Plasmid Plus":
+    run_plasmid_plus()
+
+# --- MODULE: Database & Reference Integration ---
+elif menu == "🧫 Database & Reference Integration":
+    run_database_integration()
+
+# --- MODULE: Data Management ---
+elif menu == "🧬 Data Management":
+    run_data_management()
+
 # --- Footer ---
 st.markdown("---")
-st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.0 · Zweisprachig DE/EN")
+st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.8 · Zweisprachig DE/EN")
