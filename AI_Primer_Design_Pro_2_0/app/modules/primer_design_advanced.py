@@ -210,28 +210,28 @@ def run_primer_design_advanced():
         except Exception:
             st.warning("⚠️ Konnte Off-Target-FASTA nicht lesen.")
 
-    # -------------------- Parameter ------------------------------------------
-  st.subheader("⚙️ Design-Parameter")
+       # -------------------- Parameter ------------------------------------------
+    st.subheader("⚙️ Design-Parameter")
 
-c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-with c1:
-    st.markdown("**Primerlängenbereich (bp)**")
-    primer_length_range = st.text_input("min,opt,max", "18,20,25")
-    try:
-        pmin, popt, pmax = [int(x) for x in primer_length_range.split(",")]
-    except:
-        st.warning("⚠️ Bitte drei Werte eingeben, z. B. 18,20,25")
-        pmin, popt, pmax = 18, 20, 25  # Standardwerte als Fallback
+    with c1:
+        st.markdown("**Primerlängenbereich (bp)**")
+        primer_length_range = st.text_input("min,opt,max", "18,20,25")
+        try:
+            pmin, popt, pmax = [int(x) for x in primer_length_range.split(",")]
+        except:
+            st.warning("⚠️ Bitte drei Werte eingeben, z. B. 18,20,25")
+            pmin, popt, pmax = 18, 20, 25  # Standardwerte als Fallback
 
-with c2:
-    tm_min, tm_max = st.slider("Tm-Bereich (°C)", 48, 75, (58, 62))
-    prod_min, prod_max = st.slider("Produktgröße (bp)", 60, 1500, (100, 400))
+    with c2:
+        tm_min, tm_max = st.slider("Tm-Bereich (°C)", 48, 75, (58, 62))
+        prod_min, prod_max = st.slider("Produktgröße (bp)", 60, 1500, (100, 400))
 
-with c3:
-    monoval = st.number_input("Na⁺/K⁺ (mM)", 0.0, 500.0, 50.0, step=1.0)
-    dival = st.number_input("Mg²⁺ (mM)", 0.0, 10.0, 1.5, step=0.1)
-    dntp = st.number_input("dNTP (mM)", 0.0, 5.0, 0.6, step=0.1)
+    with c3:
+        monoval = st.number_input("Na⁺/K⁺ (mM)", 0.0, 500.0, 50.0, step=1.0)
+        dival = st.number_input("Mg²⁺ (mM)", 0.0, 10.0, 1.5, step=0.1)
+        dntp = st.number_input("dNTP (mM)", 0.0, 5.0, 0.6, step=0.1)
 
     st.subheader("🧩 Erweiterte Optionen")
     gc_clamp = st.checkbox("3'-GC-Clamp bevorzugen", True)
