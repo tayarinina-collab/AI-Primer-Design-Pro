@@ -2,6 +2,7 @@
 import streamlit as st
 
 # --- Module Imports ---
+from modules.alignment_phylogeny import run_alignment_phylogeny
 from modules.sequence_management import run_sequence_management
 from modules.primer_design import run_primer_design
 from modules.primer_design_advanced import run_primer_design_advanced
@@ -48,6 +49,7 @@ menu = st.sidebar.radio(
         "🧬 Plasmid Plus",
         "🧫 Database & Reference Integration",
         "🧬 Data Management"
+        "🌳 Alignment & Phylogeny",
     ],
 )
 
@@ -107,6 +109,11 @@ elif menu == "🧫 Database & Reference Integration":
 # --- MODULE: Data Management ---
 elif menu == "🧬 Data Management":
     run_data_management()
+    
+# --- MODULE: Alignment & Phylogeny ---
+elif menu == "🌳 Alignment & Phylogeny":
+    run_alignment_phylogeny()
+
 
 # --- Footer ---
 st.markdown("---")
