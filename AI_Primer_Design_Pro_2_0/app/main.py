@@ -48,7 +48,7 @@ menu = st.sidebar.radio(
         "🧫 Plasmid Designer",
         "🧬 Plasmid Plus",
         "🧫 Database & Reference Integration",
-        "🧬 Data Management"
+        "🧬 Data Management",
         "🌳 Alignment & Phylogeny",
     ],
 )
@@ -109,11 +109,10 @@ elif menu == "🧫 Database & Reference Integration":
 # --- MODULE: Data Management ---
 elif menu == "🧬 Data Management":
     run_data_management()
-    
+
 # --- MODULE: Alignment & Phylogeny ---
 elif menu == "🌳 Alignment & Phylogeny":
     run_alignment_phylogeny()
-
 
 # --- Footer ---
 st.markdown("---")
