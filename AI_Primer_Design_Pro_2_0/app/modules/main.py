@@ -5,10 +5,10 @@ import streamlit as st
 import importlib
 import sys, os
 
-# --- Set working path so modules can be found ---
+# --- Arbeitsverzeichnis für Modulimporte ---
 sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
 
-# --- Page configuration ---
+# --- Seiteneinstellungen ---
 st.set_page_config(
     page_title="AI Primer Design Pro",
     layout="wide",
@@ -22,14 +22,14 @@ lang = st.sidebar.radio("🌐 Sprache / Language", ("Deutsch", "English"), horiz
 # --- Sidebar: Theme Switch ---
 theme_mode = st.sidebar.radio("🎨 Theme", ("🌙 Dark Mode", "☀️ Light Mode"), horizontal=True)
 
+# --- Theme Styling ---
 if theme_mode == "🌙 Dark Mode":
     st.markdown(
         """
         <style>
-        body { background-color: #0e1117; color: white; }
-        .stApp { background-color: #0e1117; color: white; }
-        .stSidebar { background-color: #111; }
-        h1, h2, h3, h4, h5, h6, p, div, span { color: white !important; }
+        body, .stApp { background-color: #0e1117 !important; color: white !important; }
+        .stSidebar { background-color: #111 !important; }
+        h1, h2, h3, h4, h5, h6, p, div, span, label { color: white !important; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -38,9 +38,8 @@ else:
     st.markdown(
         """
         <style>
-        body { background-color: #f8f9fa; color: #111; }
-        .stApp { background-color: #f8f9fa; color: #111; }
-        .stSidebar { background-color: #fff; }
+        body, .stApp { background-color: #f8f9fa !important; color: #111 !important; }
+        .stSidebar { background-color: #ffffff !important; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -52,7 +51,7 @@ st.markdown(
     <h1 style='text-align:center;'>🧬 AI Primer Design Pro</h1>
     <p style='text-align:center; font-size:18px;'>
         Intelligente Bioinformatik-Plattform für DNA-, RNA- & Protein-Analysen.<br>
-        Combining AI, Automation & Visualization for smarter research.
+        Combining <b>AI</b>, <b>Automation</b> & <b>Visualization</b> for smarter research.
     </p>
     """,
     unsafe_allow_html=True,
@@ -74,14 +73,14 @@ modules = {
     "⚙️ Settings / About": "settings_about",
 }
 
+# --- Modul-Auswahl ---
 choice = st.sidebar.radio("🔬 Select Module", list(modules.keys()))
 
-# --- Dynamisches Modul-Laden ---
+# --- Dynamisches Laden ---
 try:
     selected_module = modules[choice]
     module = importlib.import_module(f"modules.{selected_module}")
 
-    # Jede Moduldatei muss eine Funktion run_<modulname>() enthalten
     run_function_name = f"run_{selected_module}"
     if hasattr(module, run_function_name):
         getattr(module, run_function_name)()
@@ -98,7 +97,7 @@ st.markdown(
     """
     <hr>
     <p style='text-align:center; color:gray; font-size:14px;'>
-    🧠 Developed with ❤️ in Hamburg · Version 2.0 · Bilingual DE/EN
+        🧠 Developed with ❤️ in Hamburg · Version 2.0 · Bilingual DE/EN
     </p>
     """,
     unsafe_allow_html=True,
