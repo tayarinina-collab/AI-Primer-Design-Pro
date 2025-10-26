@@ -39,7 +39,7 @@ menu = st.sidebar.radio(
         "🧬 Sequence Management",
         "🧫 Primer Design",
         "🧪 Primer Design – Advanced",
-        ""🧫 Cloning & Assembly Tools",
+        "🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
         "🧫 Plasmid Designer"
     ],
