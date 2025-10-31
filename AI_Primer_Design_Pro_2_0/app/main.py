@@ -15,6 +15,7 @@ from modules.plasmid_plus import run_plasmid_plus
 from modules.database_integration import run_database_integration
 from modules.data_management import run_data_management
 from modules.ui_layout import set_theme
+from modules.gene_map_viewer import visualize_dna_map   # 🧬 NEW IMPORT
 
 # --- Seiteneinstellungen ---
 st.set_page_config(
@@ -45,6 +46,7 @@ menu = st.sidebar.radio(
         "🧬 Sequence Management",
         "🧫 Primer Design",
         "🧪 Primer Design – Advanced",
+        "🧬 Visual DNA Map",                  # 🧩 NEW MODULE
         "🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
         "🧫 Plasmid Designer",
@@ -90,6 +92,27 @@ elif menu == "🧫 Primer Design":
 elif menu == "🧪 Primer Design – Advanced":
     run_primer_design_advanced()
 
+# --- MODULE: Visual DNA Map ---
+elif menu == "🧬 Visual DNA Map":
+    st.title("🧬 Visual DNA Map & Primer Heatmap")
+
+    fasta_file = st.file_uploader("📂 Lade eine FASTA-Datei hoch", type=["fasta", "fa"])
+    if fasta_file:
+        with open("uploaded.fasta", "wb") as f:
+            f.write(fasta_file.getbuffer())
+
+        # Beispiel-Primer (später dynamisch aus Primer-Design übernehmen)
+        primers = [
+            {"name": "Fwd1", "start": 120, "end": 140, "Tm": 59.2, "GC": 45, "score": 90},
+            {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 70},
+        ]
+
+        st.success("✅ Datei geladen! DNA-Karte wird generiert...")
+        visualize_dna_map("uploaded.fasta", primers, color_by="score")
+
+    else:
+        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte anzuzeigen.")
+
 # --- MODULE: Cloning & Assembly Tools ---
 elif menu == "🧫 Cloning & Assembly Tools":
     run_cloning_tools()
@@ -118,9 +141,11 @@ elif menu == "🧬 Data Management":
 elif menu == "🌳 Alignment & Phylogeny":
     run_alignment_phylogeny()
 
+# --- MODULE: AI Learning & Chatbot System ---
 elif menu == "🤖 AI Learning & Chatbot System":
     run_ai_learning_chatbot()
 
+# --- MODULE: Reports & Export Center ---
 elif menu == "📊 Reports & Export Center":
     run_reports_export_center()
 
