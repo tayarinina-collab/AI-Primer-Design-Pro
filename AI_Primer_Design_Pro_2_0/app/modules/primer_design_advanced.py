@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Primer Design Advanced (Geneious-Pro Style) – offlinefähig
+Primer Design Advanced (Geneious-Pro Style) – stabilisierte Version
 Funktionen:
-- Automatisches Primerpaar-Design via primer3
-- Import von Primerlisten (CSV/TSV/XLSX)
-- Manuelles Prüfen/Scoren eingegebener Primer
-- 5'-Extensions (Preset + Custom)
-- Degenerate Primer via Consensus aus Alignment (IUPAC)
-- Off-Target-Check gegen lokale FASTA-DB (mismatch-tolerant, beide Stränge)
-- Amplicon-Extraktion & Visualisierung
-- qPCR/TaqMan-Probe
-- Optionale AI-Zusammenfassung (OpenAI, falls KEY verfügbar)
+- Primer Design via primer3 (mit Thermoanalyse)
+- Import (FASTA, CSV, XLSX)
+- Manuelles Primer-Scoring
+- 5'-Extensions, GC-Clamp, Degenerate-Option
+- Thermo-Fallback, Off-Target-Warnung
+- qPCR-Probe, Visualisierung, AI-Zusammenfassung
 """
 
-import os
-import io
-import textwrap
+import os, io, textwrap
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -23,7 +18,7 @@ import matplotlib.pyplot as plt
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-# ---- Optional: OpenAI und primer3 ----
+# ===== Optional Libraries =====
 try:
     import openai
     OPENAI_OK = True
@@ -43,7 +38,7 @@ except Exception:
     XLSX_OK = False
 
 
-# ============================= Utilities ====================================
+# ============================= UTILITIES =============================
 def revcomp(s: str) -> str:
     return str(Seq(s).reverse_complement())
 
@@ -59,16 +54,25 @@ def longest_homopolymer(s: str) -> int:
     return best
 
 def dG_hairpin(seq: str) -> float:
-    r = primer3.calcHairpin(seq)
-    return r.dg if r.structure_found else 0.0
+    try:
+        r = primer3.calcHairpin(seq)
+        return r.dg if r.structure_found else 0.0
+    except Exception:
+        return 0.0
 
 def dG_homodimer(seq: str) -> float:
-    r = primer3.calcHomodimer(seq)
-    return r.dg if r.structure_found else 0.0
+    try:
+        r = primer3.calcHomodimer(seq)
+        return r.dg if r.structure_found else 0.0
+    except Exception:
+        return 0.0
 
 def dG_heterodimer(a: str, b: str) -> float:
-    r = primer3.calcHeterodimer(a, b)
-    return r.dg if r.structure_found else 0.0
+    try:
+        r = primer3.calcHeterodimer(a, b)
+        return r.dg if r.structure_found else 0.0
+    except Exception:
+        return 0.0
 
 def simple_score(tm_l, tm_r, gc_l, gc_r, dg_hd, dg_xd, homopoly, tm_target):
     tm_gap = abs(tm_l - tm_r)
@@ -81,7 +85,7 @@ def simple_score(tm_l, tm_r, gc_l, gc_r, dg_hd, dg_xd, homopoly, tm_target):
     return round(float(np.clip(score, 0, 1)), 3)
 
 
-# ============================= 5'-Extensions ================================
+# ============================= 5'-Extensions =============================
 EXT_PRESETS = {
     "—": ("", ""),
     "EcoRI (GAATTC)": ("GAATTC", "GAATTC"),
@@ -92,23 +96,20 @@ EXT_PRESETS = {
 }
 
 
-# ============================= Main App =====================================
+# ============================= MAIN MODULE =============================
 def run_primer_design_advanced():
     st.title("🧪 Primer Design – Advanced (Geneious Pro)")
     st.caption("Import/Export, Off-Target-Check, Degenerate-Design, 5′-Extensions, qPCR-Probe, Visualisierung")
 
-    # --- Eingaben -----------------------------------------------------------
+    # --- Eingaben --------------------------------------------------------
     st.subheader("📥 Eingaben")
-    left, right = st.columns(2)
-    with left:
+    col1, col2 = st.columns(2)
+    with col1:
         upl_target = st.file_uploader("Zielsequenz (FASTA/TXT)", type=["fasta", "fa", "txt"])
         target_text = st.text_area("…oder DNA-Sequenz hier einfügen (5'→3')", height=120)
-    with right:
-        upl_alignment = st.file_uploader("Alignment (Multi-FASTA) für Degenerate-Primer (optional)", type=["fasta", "fa"])
-        upl_primer_list = st.file_uploader("Primerliste importieren (CSV/TSV/XLSX)", type=["csv", "tsv", "txt", "xlsx"])
+    with col2:
         upl_db = st.file_uploader("Off-Target-Datenbank (FASTA, optional)", type=["fasta", "fa"])
 
-    # --- Zielsequenz laden --------------------------------------------------
     target_seq = ""
     if upl_target is not None:
         txt = upl_target.getvalue().decode("utf-8").strip()
@@ -121,28 +122,24 @@ def run_primer_design_advanced():
     elif target_text.strip():
         target_seq = target_text.strip().upper().replace("U", "T")
 
-    # --- Parameter ----------------------------------------------------------
+    # --- Parameter --------------------------------------------------------
     st.subheader("⚙️ Design-Parameter")
     c1, c2, c3 = st.columns(3)
-
     with c1:
-        st.markdown("**Primerlängenbereich (bp)**")
-        primer_length_range = st.text_input("min,opt,max", "18,20,25")
+        primer_length_range = st.text_input("Primerlängenbereich (min,opt,max)", "18,20,25")
         try:
             pmin, popt, pmax = [int(x) for x in primer_length_range.split(",")]
         except:
             pmin, popt, pmax = 18, 20, 25
-
     with c2:
         tm_min, tm_max = st.slider("Tm-Bereich (°C)", 48, 75, (58, 62))
         prod_min, prod_max = st.slider("Produktgröße (bp)", 60, 1500, (100, 400))
-
     with c3:
         monoval = st.number_input("Na⁺/K⁺ (mM)", 0.0, 500.0, 50.0, step=1.0)
         dival = st.number_input("Mg²⁺ (mM)", 0.0, 10.0, 1.5, step=0.1)
         dntp = st.number_input("dNTP (mM)", 0.0, 5.0, 0.6, step=0.1)
 
-    # --- Erweiterte Optionen -----------------------------------------------
+    # --- Erweiterte Optionen --------------------------------------------
     st.subheader("🧩 Erweiterte Optionen")
     gc_min, gc_max = st.slider("GC-Gehalt (%)", 20, 80, (40, 60))
     gc_clamp = st.checkbox("3'-GC-Clamp bevorzugen", True)
@@ -150,20 +147,20 @@ def run_primer_design_advanced():
     allow_degenerate = st.checkbox("Degenerate-Primer erlauben (IUPAC)", False)
     mismatches = st.slider("Off-Target-Suche: erlaubte Mismatches", 0, 3, 2)
 
-    ex_col1, ex_col2 = st.columns(2)
-    with ex_col1:
+    ex1, ex2 = st.columns(2)
+    with ex1:
         preset = st.selectbox("5'-Extensions Preset", list(EXT_PRESETS.keys()), index=0)
-    with ex_col2:
+    with ex2:
         custom_left = st.text_input("Custom 5'-Extension (Left)", "")
         custom_right = st.text_input("Custom 5'-Extension (Right)", "")
 
-    # --- qPCR Optionen ------------------------------------------------------
+    # --- qPCR Options -----------------------------------------------------
     st.subheader("🧫 qPCR / Probe")
     enable_probe = st.checkbox("Probe mitentwerfen", False)
     reporter = st.selectbox("Reporter", ["FAM", "HEX", "VIC", "ROX", "Cy5"], index=0)
     quencher = st.selectbox("Quencher", ["BHQ1", "BHQ2", "TAMRA", "Iowa Black FQ"], index=0)
 
-    # --- Button -------------------------------------------------------------
+    # ====================== DESIGN START ===========================
     if st.button("🚀 Automatisches Design starten (primer3)"):
         if not P3_OK:
             st.error("❌ primer3-py nicht installiert.")
@@ -172,10 +169,24 @@ def run_primer_design_advanced():
             st.warning("Bitte DNA-Sequenz eingeben oder FASTA hochladen.")
             return
 
+        # --- Sicherheitsprüfungen ---
+        if len(target_seq) < 50:
+            st.error("❌ Sequenz zu kurz (<50 bp) – bitte längere DNA eingeben.")
+            st.stop()
+
+        if any(x <= 0 for x in [monoval, dival, dntp]):
+            monoval, dival, dntp = 50.0, 1.5, 0.6
+
+        if allow_degenerate and any(b not in "ACGT" for b in target_seq):
+            st.warning("⚠️ Degenerate Basen erkannt – Thermoanalyse nicht möglich. Wechsle zu einfachem Modus.")
+            allow_degenerate = False
+
+        # --- Extensions bestimmen ---
         extL, extR = EXT_PRESETS.get(preset, ("", ""))
         if custom_left: extL = custom_left.upper().replace("U", "T")
         if custom_right: extR = custom_right.upper().replace("U", "T")
 
+        # --- Primer3 Argumente ---
         args = {
             "PRIMER_OPT_SIZE": popt,
             "PRIMER_MIN_SIZE": pmin,
@@ -193,10 +204,14 @@ def run_primer_design_advanced():
             "PRIMER_DNA_CONC": 250.0
         }
 
-        design = primer3.bindings.designPrimers(
-            {"SEQUENCE_ID": "target", "SEQUENCE_TEMPLATE": target_seq},
-            args
-        )
+        try:
+            design = primer3.bindings.designPrimers(
+                {"SEQUENCE_ID": "target", "SEQUENCE_TEMPLATE": target_seq},
+                args
+            )
+        except ValueError:
+            st.error("❌ Thermoanalyse-Fehler: Überprüfe Degenerate-Basen, GC% oder Produktgröße.")
+            return
 
         pairs = []
         for i in range(design.get("PRIMER_PAIR_NUM_RETURNED", 0)):
@@ -205,8 +220,7 @@ def run_primer_design_advanced():
             if not lseq or not rseq:
                 continue
 
-            lseq_full = extL + lseq
-            rseq_full = extR + rseq
+            lseq_full, rseq_full = extL + lseq, extR + rseq
             tm_l, tm_r = design.get(f"PRIMER_LEFT_{i}_TM"), design.get(f"PRIMER_RIGHT_{i}_TM")
             gc_l, gc_r = gc_percent(lseq_full), gc_percent(rseq_full)
 
@@ -219,7 +233,6 @@ def run_primer_design_advanced():
             if gc_clamp and (lseq_full[-1] not in "GC" or rseq_full[-1] not in "GC"): continue
 
             score = simple_score(tm_l, tm_r, gc_l, gc_r, dgself, dgcross, homo, (tm_min+tm_max)/2)
-
             pairs.append({
                 "Rank": i+1,
                 "Left": lseq_full,
@@ -240,5 +253,5 @@ def run_primer_design_advanced():
             return
 
         df = pd.DataFrame(pairs)
-        st.success(f"{len(df)} Primerpaare erfolgreich generiert ✅")
+        st.success(f"✅ {len(df)} Primerpaare erfolgreich generiert")
         st.dataframe(df, use_container_width=True)
