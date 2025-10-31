@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
 """
 AI Primer Design Pro – Advanced (Geneious-Pro Style)
-Version 3.5 – mit KI-Parameteranalyse & robustem Primer3-Fallback
+Version 3.6 – mit korrigierter KI-Fallback-Logik (Produktgröße ≥ 40 bp)
 """
 import os
 import io
+import csv
+import math
+import json
 import textwrap
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from Bio.Seq import Seq
 from Bio import SeqIO
+from Bio.Seq import Seq
 
-# Primer3-Integration
+# ----------------------------------------------------------------------
+# Primer3 Import
+# ----------------------------------------------------------------------
 try:
     import primer3
     P3_OK = True
@@ -21,46 +26,32 @@ except Exception:
     P3_OK = False
 
 
-# ========================== Hilfsfunktionen ===============================
-
-def revcomp(seq: str) -> str:
-    return str(Seq(seq).reverse_complement())
-
+# ============================ Hilfsfunktionen ============================
+def revcomp(s: str) -> str:
+    return str(Seq(s).reverse_complement())
 
 def gc_percent(seq: str) -> float:
-    seq = seq.upper().replace("U", "T")
-    return round(100 * (seq.count("G") + seq.count("C")) / len(seq), 2) if seq else 0.0
+    s = seq.upper().replace("U", "T")
+    return 0.0 if not s else (100.0 * (s.count("G") + s.count("C")) / len(s))
 
-
-def longest_homopolymer(seq: str) -> int:
-    max_run = run = 1
-    for i in range(1, len(seq)):
-        run = run + 1 if seq[i] == seq[i-1] else 1
-        max_run = max(max_run, run)
-    return max_run
-
-
-def seq_stats_dna(seq: str) -> dict:
-    seq = seq.upper().replace("U", "T")
-    gc = gc_percent(seq)
-    return {"len": len(seq), "gc": gc, "nA": seq.count("A"), "nC": seq.count("C"),
-            "nG": seq.count("G"), "nT": seq.count("T")}
-
+def longest_homopolymer(s: str) -> int:
+    best = run = 1
+    for i in range(1, len(s)):
+        run = run + 1 if s[i] == s[i-1] else 1
+        best = max(best, run)
+    return best
 
 def dG_hairpin(seq: str) -> float:
     r = primer3.calcHairpin(seq)
     return r.dg if r.structure_found else 0.0
 
-
 def dG_homodimer(seq: str) -> float:
     r = primer3.calcHomodimer(seq)
     return r.dg if r.structure_found else 0.0
 
-
 def dG_heterodimer(a: str, b: str) -> float:
     r = primer3.calcHeterodimer(a, b)
     return r.dg if r.structure_found else 0.0
-
 
 def simple_score(tm_l, tm_r, gc_l, gc_r, dg_self, dg_cross, homopoly, tm_target):
     tm_gap = abs(tm_l - tm_r)
@@ -72,37 +63,42 @@ def simple_score(tm_l, tm_r, gc_l, gc_r, dg_self, dg_cross, homopoly, tm_target)
     score = 1 / (1 + 0.05 * tm_pen + 0.05 * tm_gap + 0.03 * gc_pen + 0.02 * dim_pen + 0.05 * homo_pen)
     return round(score, 3)
 
+def seq_stats_dna(seq: str) -> dict:
+    seq = seq.upper().replace("U", "T")
+    gc = gc_percent(seq)
+    return {"len": len(seq), "gc": gc, "nA": seq.count("A"), "nC": seq.count("C"),
+            "nG": seq.count("G"), "nT": seq.count("T")}
 
-# ========================== KI-Parameteranalyse ===============================
 
+# ======================== KI-Parameter-Vorschläge =========================
 def ki_param_vorschlaege(seq: str, args: dict, gc_clamp: bool, max_homopoly: int):
-    """Offline-KI: gibt Vorschläge, wenn primer3 keine Primer findet"""
+    """KI-gestützter Parameter-Fallback – Produktgröße ≥ 40 bp"""
     stx = seq_stats_dna(seq)
     reasons = []
     sugg = args.copy()
 
-    # Produktgröße (niemals < 60 bp)
+    # Produktgröße (nicht kleiner als 40 bp)
     lo, hi = sugg["PRIMER_PRODUCT_SIZE_RANGE"][0]
-    if stx["len"] < 150:
-        lo2 = 60
-        hi2 = max(100, min(400, stx["len"] - 20))
+    if stx["len"] < 120:
+        lo2 = 40
+        hi2 = max(60, min(400, stx["len"] - 10))
         sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
-        reasons.append(f"Sequenz ist kurz ({stx['len']} bp) → Produktgröße angepasst auf {lo2}–{hi2} bp.")
+        reasons.append(f"Sequenz relativ kurz ({stx['len']} bp) → Produktgröße angepasst auf {lo2}–{hi2} bp.")
     else:
-        lo2 = min(80, lo)
+        lo2 = min(60, lo)
         hi2 = max(600, hi)
         sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
         reasons.append(f"Produktgröße verbreitert auf {lo2}–{hi2} bp.")
 
-    # GC%
+    # GC-Bereich anpassen
     seq_gc = stx["gc"]
     gmin, gmax = sugg.get("PRIMER_MIN_GC", 40), sugg.get("PRIMER_MAX_GC", 60)
     if seq_gc < gmin or seq_gc > gmax or (gmax - gmin) < 20:
         span = 15
-        new_min = int(max(30, seq_gc - span))
+        new_min = int(max(25, seq_gc - span))
         new_max = int(min(75, seq_gc + span))
         sugg["PRIMER_MIN_GC"], sugg["PRIMER_MAX_GC"] = new_min, new_max
-        reasons.append(f"GC-Bereich an Sequenz-GC ({seq_gc:.1f}%) angepasst → {new_min}–{new_max}%.")
+        reasons.append(f"GC-Bereich an Sequenz-GC ({seq_gc:.1f} %) angepasst → {new_min}–{new_max} %.")
 
     # Tm-Bereich
     tmin, tmax = sugg["PRIMER_MIN_TM"], sugg["PRIMER_MAX_TM"]
@@ -110,17 +106,23 @@ def ki_param_vorschlaege(seq: str, args: dict, gc_clamp: bool, max_homopoly: int
         tmid = (tmin + tmax) / 2
         sugg["PRIMER_MIN_TM"] = max(48, int(tmid - 7))
         sugg["PRIMER_MAX_TM"] = min(72, int(tmid + 7))
-        reasons.append(f"Tm-Bereich verbreitert auf {sugg['PRIMER_MIN_TM']}–{sugg['PRIMER_MAX_TM']}°C.")
+        reasons.append(f"Tm-Bereich verbreitert auf {sugg['PRIMER_MIN_TM']}–{sugg['PRIMER_MAX_TM']} °C.")
 
-    # Primerlänge
+    # Primerlängen
     pmin, popt, pmax = sugg["PRIMER_MIN_SIZE"], sugg["PRIMER_OPT_SIZE"], sugg["PRIMER_MAX_SIZE"]
-    sugg["PRIMER_MIN_SIZE"], sugg["PRIMER_OPT_SIZE"], sugg["PRIMER_MAX_SIZE"] = min(16, pmin), popt, max(32, pmax)
-    reasons.append(f"Primerlängen erlaubt: {sugg['PRIMER_MIN_SIZE']},{sugg['PRIMER_OPT_SIZE']},{sugg['PRIMER_MAX_SIZE']} bp.")
+    pmin = min(pmin, 16)
+    pmax = max(pmax, 32)
+    popt = int((pmin + pmax) / 2)
+    sugg.update({"PRIMER_MIN_SIZE": pmin, "PRIMER_OPT_SIZE": popt, "PRIMER_MAX_SIZE": pmax})
+    reasons.append(f"Primerlängen erlaubt: {pmin},{popt},{pmax} bp.")
 
-    # GC-Clamp
-    apply_gc_clamp = False if gc_clamp else gc_clamp
+    # GC-Clamp deaktivieren, falls aktiv
+    apply_gc_clamp = gc_clamp
     if gc_clamp:
+        apply_gc_clamp = False
         reasons.append("3′-GC-Clamp temporär deaktiviert, um mehr Kandidaten zuzulassen.")
+    if max_homopoly < 6:
+        reasons.append("Max. Homopolymer-Länge auf 6 erhöht.")
 
     # Kandidatenzahl erhöhen
     sugg["PRIMER_NUM_RETURN"] = max(36, int(sugg.get("PRIMER_NUM_RETURN", 24)) + 12)
@@ -129,13 +131,11 @@ def ki_param_vorschlaege(seq: str, args: dict, gc_clamp: bool, max_homopoly: int
     return sugg, apply_gc_clamp, reasons, stx
 
 
-# ========================== Hauptfunktion ===============================
-
+# ============================= Hauptfunktion =============================
 def run_primer_design_advanced():
-    st.title("🧪 Primer Design – Advanced (Geneious-Pro Style)")
-    st.caption("Automatisches Primer-Design, KI-Parameterhilfe, qPCR-Probe, Batch-Modus")
+    st.title("🧪 Primer Design – Advanced (Geneious Pro Style)")
+    st.caption("Automatisches Primer-Design, KI-Hilfe, qPCR, Batch & Visualisierung")
 
-    # Eingabe
     seq_input = st.text_area("DNA-Sequenz (5'→3') eingeben oder FASTA laden:", height=150)
     if not seq_input.strip():
         st.info("Bitte Sequenz eingeben, um Primer zu entwerfen.")
@@ -149,19 +149,19 @@ def run_primer_design_advanced():
     with col1:
         primer_len = st.text_input("Primerlängen (min,opt,max)", "18,20,25")
         pmin, popt, pmax = [int(x) for x in primer_len.split(",")]
-        prod_min, prod_max = st.slider("Produktgröße (bp)", 60, 1200, (80, 400))
+        prod_min, prod_max = st.slider("Produktgröße (bp)", 40, 1200, (80, 400))
     with col2:
         tm_min, tm_max = st.slider("Tm-Bereich (°C)", 48, 75, (58, 62))
         gc_min, gc_max = st.slider("GC-Bereich (%)", 30, 80, (40, 60))
     with col3:
         gc_clamp = st.checkbox("3′-GC-Clamp bevorzugen", True)
         max_homopoly = st.slider("Max. Homopolymer-Länge", 3, 8, 5)
-        n_return = st.number_input("Anzahl zurückgegebener Primerpaare", 1, 50, 24)
+        n_return = st.number_input("Kandidatenzahl", 1, 50, 24)
 
-    # Aktion
+    # Design starten
     if st.button("🚀 Primer entwerfen"):
         if not P3_OK:
-            st.error("❌ primer3-py ist nicht installiert. Bitte hinzufügen.")
+            st.error("❌ primer3-py ist nicht installiert.")
             return
 
         args = {
@@ -183,11 +183,9 @@ def run_primer_design_advanced():
         )
 
         total = design.get("PRIMER_PAIR_NUM_RETURNED", 0)
-
         if total == 0:
             st.warning("Keine Primer gefunden. KI-Assistent schlägt folgende Anpassungen vor:")
             sugg, gc_temp, reasons, stats = ki_param_vorschlaege(seq, args, gc_clamp, max_homopoly)
-
             df = pd.DataFrame([
                 {"Parameter": "Tm (°C)", "Aktuell": f"{tm_min}–{tm_max}", "Vorschlag": f"{sugg['PRIMER_MIN_TM']}–{sugg['PRIMER_MAX_TM']}"},
                 {"Parameter": "GC (%)", "Aktuell": f"{gc_min}–{gc_max}", "Vorschlag": f"{sugg['PRIMER_MIN_GC']}–{sugg['PRIMER_MAX_GC']}"},
@@ -201,7 +199,7 @@ def run_primer_design_advanced():
                 st.write("• " + r)
             return
 
-        # Ergebnisse anzeigen
+        # Ergebnisse
         result = []
         for i in range(total):
             lp = design[f"PRIMER_LEFT_{i}_SEQUENCE"]
@@ -215,8 +213,8 @@ def run_primer_design_advanced():
 
             result.append({
                 "Index": i + 1,
-                "Left": lp,
-                "Right": rp,
+                "Left Primer": lp,
+                "Right Primer": rp,
                 "Tm (°C)": round(np.mean([tm_l, tm_r]), 1),
                 "GC%": round(np.mean([gc_l, gc_r]), 1),
                 "ΔG (kcal/mol)": round(min(dg_self, dg_cross), 2),
@@ -239,8 +237,7 @@ def run_primer_design_advanced():
         st.pyplot(fig)
 
         # Download
-        st.download_button("⬇️ Exportiere Ergebnisse als CSV", df.to_csv(index=False).encode("utf-8"),
-                           file_name="primer_results.csv", mime="text/csv")
-
-
-# ========================== Ende Modul ===============================
+        st.download_button("⬇️ Exportiere Ergebnisse als CSV",
+                           df.to_csv(index=False).encode("utf-8"),
+                           file_name="primer_results_advanced.csv",
+                           mime="text/csv")
