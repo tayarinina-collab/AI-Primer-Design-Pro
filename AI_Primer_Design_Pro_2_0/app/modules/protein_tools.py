@@ -6,7 +6,7 @@ Protein Tools Modul
 • Motif-Suche (PROSITE, Pfam-ähnlich)
 • Sekundärstruktur-Schätzung (rudimentär)
 • 3D-Struktur-Viewer (Cloud-kompatibel)
-• Protein-Domain Annotation mit UniProt
+• Protein-Domain Annotation mit UniProt (tabellarisch)
 """
 import io, requests
 import streamlit as st
@@ -15,9 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Bio.Seq import Seq
 from Bio.SeqUtils import ProtParam
-from Bio import ExPASy, SwissProt
 
-# optional 3D viewer (lokal)
+# optional 3D viewer
 try:
     import py3Dmol
     PDB_OK = True
@@ -166,7 +165,6 @@ def run_protein_tools():
     with tabs[4]:
         st.subheader("3D-Struktur-Viewer (PDB) 🌐")
         pdb_id = st.text_input("PDB ID (z. B. 1CRN oder 6M0J)", "")
-
         if st.button("Struktur anzeigen"):
             import streamlit.components.v1 as components
             if not pdb_id:
@@ -190,10 +188,27 @@ def run_protein_tools():
                 try:
                     r = requests.get(url, timeout=10)
                     if r.status_code == 200:
-                        lines = r.text.splitlines()
-                        features = [l for l in lines if l.startswith("FT")]
-                        st.text_area("UniProt Feature Extract", "\n".join(features), height=300)
+                        raw_text = r.text
+                        features = [l for l in raw_text.splitlines() if l.startswith("FT")]
+
+                        def parse_uniprot_features(lines):
+                            rows = []
+                            for line in lines:
+                                parts = line.split()
+                                if len(parts) > 2:
+                                    feature = parts[1]
+                                    rest = " ".join(parts[2:])
+                                    rows.append({"Feature": feature, "Beschreibung": rest})
+                            return pd.DataFrame(rows)
+
+                        df = parse_uniprot_features(features)
+
+                        st.success(f"Eintrag erfolgreich geladen: **{uniprot_id}**  ·  {len(df)} Features erkannt")
+                        st.dataframe(df, use_container_width=True)
+
+                        with st.expander("Rohdaten anzeigen (Original UniProt Format)"):
+                            st.text_area("UniProt Raw Feature Data", "\n".join(features), height=300)
                     else:
-                        st.warning("Kein Eintrag gefunden.")
+                        st.warning("Kein Eintrag gefunden oder ungültige ID.")
                 except Exception as e:
-                    st.error(f"Fehler: {e}")
+                    st.error(f"Fehler beim Abrufen: {e}")
