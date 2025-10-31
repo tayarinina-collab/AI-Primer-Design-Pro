@@ -19,7 +19,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-# --- Optional: Bio.Restriction, wenn vorhanden (sonst eigene Erkennung) -----
+# --- Optional: Bio.Restriction, wenn vorhanden (sonst Fallback) -----
 try:
     from Bio.Restriction import RestrictionBatch, AllEnzymes
     BIO_RESTRICTION_OK = True
@@ -32,8 +32,8 @@ except Exception:
 @dataclass
 class Feature:
     name: str
-    start: int  # 0-based, inclusive
-    end: int    # 0-based, exclusive
+    start: int
+    end: int
     ftype: str = "misc_feature"
     strand: int = 1
 
@@ -51,8 +51,7 @@ FEATURE_COLORS = {
 # =========================== Hilfsfunktionen =================================
 
 def wrap_len(idx: int, L: int) -> int:
-    idx %= L
-    return idx
+    return idx % L
 
 
 def normalize_feature(start: int, end: int, L: int) -> List[Tuple[int, int]]:
@@ -89,7 +88,7 @@ def find_orfs(seq: str, min_aa: int = 100) -> List[Tuple[int, int]]:
                     if s[j:j+3] in stops:
                         aa_len = (j - i) // 3
                         if aa_len >= min_aa:
-                            orfs.append((i, j+3))
+                            orfs.append((i, j + 3))
                         i = j
                         break
                     j += 3
@@ -98,12 +97,12 @@ def find_orfs(seq: str, min_aa: int = 100) -> List[Tuple[int, int]]:
 
 
 BASIC_ENZYMES = {
-    "EcoRI":  "GAATTC",
-    "BamHI":  "GGATCC",
-    "XbaI":   "TCTAGA",
-    "HindIII":"AAGCTT",
-    "PstI":   "CTGCAG",
-    "KpnI":   "GGTACC",
+    "EcoRI": "GAATTC",
+    "BamHI": "GGATCC",
+    "XbaI": "TCTAGA",
+    "HindIII": "AAGCTT",
+    "PstI": "CTGCAG",
+    "KpnI": "GGTACC",
 }
 
 
@@ -115,7 +114,7 @@ def find_sites_simple(seq: str, motif: str) -> List[int]:
     hits = []
     k = len(m)
     for i in range(L - k + 1):
-        if s[i:i+k] == m or s[i:i+k] == rc:
+        if s[i:i + k] == m or s[i:i + k] == rc:
             hits.append(i)
     return hits
 
@@ -138,11 +137,11 @@ def draw_plasmid(seq: str, features: List[Feature], title: str = "Plasmid-Karte"
     ax.set_theta_offset(math.pi / 2.0)
 
     # Grundkreis
-    ax.plot(np.linspace(0, 2*math.pi, 360), [1.0]*360, lw=2, color="#555")
+    ax.plot(np.linspace(0, 2 * math.pi, 360), [1.0] * 360, lw=2, color="#555")
 
     # Tick Marks (alle 1000 bp)
     ticks = max(1, L // 1000)
-    for t in range(ticks+1):
+    for t in range(ticks + 1):
         pos = int(t * L / ticks)
         theta = (pos / L) * 2 * math.pi
         ax.plot([theta, theta], [0.95, 1.05], color="#999", lw=1)
@@ -194,9 +193,9 @@ def run_plasmid_designer():
         "📤 Export",
     ])
 
-    # =========================================================================
+    # -------------------------------------------------------------------------
     # TAB 1 – Plasmid-Karte
-    # =========================================================================
+    # -------------------------------------------------------------------------
     with tabs[0]:
         st.subheader("Plasmid-Karte & Feature-Management")
 
@@ -220,39 +219,31 @@ def run_plasmid_designer():
             edited = st.data_editor(df, num_rows="dynamic", use_container_width=True)
 
             if st.button("Änderungen übernehmen / Update"):
-                feats: List[Feature] = []
-                invalid = []
+                feats = []
                 for _, r in edited.iterrows():
                     try:
-                        start, end = int(r["start"]), int(r["end"])
-                        if start < 0 or end > length:
-                            invalid.append(r["name"])
-                            start = max(0, min(start, length))
-                            end = max(0, min(end, length))
-                        feats.append(Feature(str(r["name"]), start, end,
+                        feats.append(Feature(str(r["name"]), int(r["start"]), int(r["end"]),
                                              str(r["ftype"]), int(r["strand"])))
                     except Exception:
                         pass
                 st.session_state.plasmid_features = feats
                 st.session_state.plasmid_seq = seq
-                if invalid:
-                    st.warning(f"⚠️ Features außerhalb der Sequenz wurden korrigiert: {', '.join(invalid)}")
                 st.success("Aktualisiert ✅")
 
             draw_plasmid(seq, st.session_state.plasmid_features)
 
         else:
-            st.info("🔹 Bitte zuerst eine Sequenz eingeben oder in Tab **GenBank/FASTA Import** laden.")
+            st.info("🔹 Bitte zuerst eine Sequenz eingeben oder im Tab **GenBank/FASTA Import** laden.")
 
-    # =========================================================================
-    # TAB 2 – GenBank / FASTA Import (unverändert)
-    # =========================================================================
+    # -------------------------------------------------------------------------
+    # TAB 2 – GenBank / FASTA Import
+    # -------------------------------------------------------------------------
     with tabs[1]:
         st.subheader("GenBank / FASTA Import")
         upl = st.file_uploader("Datei wählen", type=["gb", "gbk", "genbank", "fasta", "fa", "txt"])
         if upl is not None:
             raw = upl.read().decode("utf-8", errors="ignore")
-            fmt = "genbank" if upl.name.lower().endswith(("gb","gbk","genbank")) else "fasta"
+            fmt = "genbank" if upl.name.lower().endswith(("gb", "gbk", "genbank")) else "fasta"
             try:
                 recs = list(SeqIO.parse(io.StringIO(raw), fmt))
                 if not recs:
@@ -260,7 +251,7 @@ def run_plasmid_designer():
                 else:
                     rec = recs[0]
                     st.session_state.plasmid_seq = str(rec.seq)
-                    feats: List[Feature] = []
+                    feats = []
                     if fmt == "genbank" and hasattr(rec, "features"):
                         for f in rec.features:
                             try:
@@ -277,7 +268,93 @@ def run_plasmid_designer():
             except Exception as e:
                 st.error(f"Fehler beim Import: {e}")
 
-    # =========================================================================
-    # TAB 3 – Restriktionskarte / TAB 4 – Kloning / TAB 5 – Export
-    # =========================================================================
-    # unverändert, da funktional korrekt
+    # -------------------------------------------------------------------------
+    # TAB 3 – Restriktionskarte
+    # -------------------------------------------------------------------------
+    with tabs[2]:
+        st.subheader("✂️ Restriktionskarte")
+
+        seq = st.session_state.get("plasmid_seq", "").upper().replace("\n", "").replace(" ", "")
+        if not seq:
+            st.info("⚠️ Keine Sequenz gefunden. Bitte zuerst eine DNA-Sequenz eingeben oder importieren.")
+        else:
+            st.caption(f"Länge: **{len(seq)} bp**, GC: **{gc_percent(seq):.1f}%**")
+
+            enzyme_list = list(BASIC_ENZYMES.keys())
+            picked = st.multiselect("Restriktionsenzyme auswählen",
+                                    options=enzyme_list,
+                                    default=["EcoRI", "BamHI", "HindIII"])
+
+            if st.button("🔎 Restriktionsschnittstellen suchen"):
+                rows = []
+                for name in picked:
+                    motif = BASIC_ENZYMES[name]
+                    hits = find_sites_simple(seq, motif)
+                    for pos in hits:
+                        rows.append({"Enzym": name, "Position (bp)": pos})
+                if rows:
+                    df_sites = pd.DataFrame(rows).sort_values("Position (bp)")
+                    st.success(f"{len(rows)} Schnittstellen gefunden ✅")
+                    st.dataframe(df_sites, use_container_width=True)
+
+                    fig, ax = plt.subplots(figsize=(6, 1))
+                    ax.set_xlim(0, len(seq))
+                    ax.set_ylim(0, 1)
+                    ax.set_yticks([])
+                    for _, r in df_sites.iterrows():
+                        ax.axvline(x=r["Position (bp)"], color="red", lw=1)
+                        ax.text(r["Position (bp)"], 0.5, r["Enzym"], rotation=90,
+                                va="center", ha="center", fontsize=8, color="red")
+                    ax.set_xlabel("Position (bp)")
+                    ax.set_title("Restriktionsschnittstellen")
+                    st.pyplot(fig, use_container_width=True)
+                else:
+                    st.warning("Keine Schnittstellen für die gewählten Enzyme gefunden.")
+
+    # -------------------------------------------------------------------------
+    # TAB 4 – Kloning-Simulation
+    # -------------------------------------------------------------------------
+    with tabs[3]:
+        st.subheader("🧪 Kloning-Simulation (einfach)")
+        seq = st.session_state.get("plasmid_seq", "")
+        if not seq:
+            st.info("Bitte zuerst eine Sequenz eingeben oder importieren.")
+        else:
+            insert = st.text_area("Insert-Sequenz", height=120)
+            pos = st.number_input("Einfügeposition (bp, 0-basiert)", 0, len(seq), 0)
+            rc = st.checkbox("Insert als reverse complement einfügen", value=False)
+            if st.button("Virtuell ligieren"):
+                ins = revcomp(insert) if rc else insert
+                new_seq = seq[:pos] + ins + seq[pos:]
+                st.success(f"Neue Länge: {len(new_seq)} bp")
+                st.code(new_seq[:300] + ("..." if len(new_seq) > 300 else ""), language="text")
+                if st.button("Als aktuelle Plasmid-Sequenz übernehmen"):
+                    st.session_state.plasmid_seq = new_seq
+                    st.info("Sequenz übernommen.")
+
+    # -------------------------------------------------------------------------
+    # TAB 5 – Export
+    # -------------------------------------------------------------------------
+    with tabs[4]:
+        st.subheader("📤 Export")
+        seq = st.session_state.get("plasmid_seq", "")
+        if not seq:
+            st.info("Keine Sequenz vorhanden.")
+        else:
+            feats = st.session_state.get("plasmid_features", [])
+            rec = make_seqrecord(seq, name="plasmid", description="exported from AI Primer Design Pro")
+
+            fasta_bytes = io.BytesIO()
+            SeqIO.write(rec, fasta_bytes, "fasta")
+            st.download_button("⬇️ FASTA exportieren", fasta_bytes.getvalue(),
+                               file_name="plasmid.fasta", mime="text/fasta")
+
+            feat_df = pd.DataFrame([f.__dict__ for f in feats])
+            st.download_button("⬇️ Features als CSV",
+                               feat_df.to_csv(index=False).encode("utf-8"),
+                               file_name="plasmid_features.csv", mime="text/csv")
+
+            fig = draw_plasmid(seq, feats, "Plasmid-Karte (Export-Vorschau)")
+            svg_bytes = fig_to_svg_bytes(fig)
+            st.download_button("⬇️ SVG downloaden", svg_bytes,
+                               file_name="plasmid_map.svg", mime="image/svg+xml")
