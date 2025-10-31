@@ -88,7 +88,7 @@ def find_orfs(seq: str, min_aa: int = 100) -> List[Tuple[int, int]]:
                     if s[j:j+3] in stops:
                         aa_len = (j - i) // 3
                         if aa_len >= min_aa:
-                            orfs.append((i, j + 3))
+                            orfs.append((i, j+3))
                         i = j
                         break
                     j += 3
@@ -307,54 +307,4 @@ def run_plasmid_designer():
                                 va="center", ha="center", fontsize=8, color="red")
                     ax.set_xlabel("Position (bp)")
                     ax.set_title("Restriktionsschnittstellen")
-                    st.pyplot(fig, use_container_width=True)
-                else:
-                    st.warning("Keine Schnittstellen für die gewählten Enzyme gefunden.")
-
-    # -------------------------------------------------------------------------
-    # TAB 4 – Kloning-Simulation
-    # -------------------------------------------------------------------------
-    with tabs[3]:
-        st.subheader("🧪 Kloning-Simulation (einfach)")
-        seq = st.session_state.get("plasmid_seq", "")
-        if not seq:
-            st.info("Bitte zuerst eine Sequenz eingeben oder importieren.")
-        else:
-            insert = st.text_area("Insert-Sequenz", height=120)
-            pos = st.number_input("Einfügeposition (bp, 0-basiert)", 0, len(seq), 0)
-            rc = st.checkbox("Insert als reverse complement einfügen", value=False)
-            if st.button("Virtuell ligieren"):
-                ins = revcomp(insert) if rc else insert
-                new_seq = seq[:pos] + ins + seq[pos:]
-                st.success(f"Neue Länge: {len(new_seq)} bp")
-                st.code(new_seq[:300] + ("..." if len(new_seq) > 300 else ""), language="text")
-                if st.button("Als aktuelle Plasmid-Sequenz übernehmen"):
-                    st.session_state.plasmid_seq = new_seq
-                    st.info("Sequenz übernommen.")
-
-    # -------------------------------------------------------------------------
-    # TAB 5 – Export
-    # -------------------------------------------------------------------------
-    with tabs[4]:
-        st.subheader("📤 Export")
-        seq = st.session_state.get("plasmid_seq", "")
-        if not seq:
-            st.info("Keine Sequenz vorhanden.")
-        else:
-            feats = st.session_state.get("plasmid_features", [])
-            rec = make_seqrecord(seq, name="plasmid", description="exported from AI Primer Design Pro")
-
-            fasta_bytes = io.BytesIO()
-            SeqIO.write(rec, fasta_bytes, "fasta")
-            st.download_button("⬇️ FASTA exportieren", fasta_bytes.getvalue(),
-                               file_name="plasmid.fasta", mime="text/fasta")
-
-            feat_df = pd.DataFrame([f.__dict__ for f in feats])
-            st.download_button("⬇️ Features als CSV",
-                               feat_df.to_csv(index=False).encode("utf-8"),
-                               file_name="plasmid_features.csv", mime="text/csv")
-
-            fig = draw_plasmid(seq, feats, "Plasmid-Karte (Export-Vorschau)")
-            svg_bytes = fig_to_svg_bytes(fig)
-            st.download_button("⬇️ SVG downloaden", svg_bytes,
-                               file_name="plasmid_map.svg", mime="image/svg+xml")
+                    st.pyplot(fig, use_container_width
