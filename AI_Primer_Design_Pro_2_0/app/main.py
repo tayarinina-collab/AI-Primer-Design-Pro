@@ -101,49 +101,86 @@ elif menu == "🧬 Visual DNA Map":
     st.title("🧬 Geneious-Style Visual DNA Map")
 
     # UI-Optionen
-    colA, colB = st.columns(2)
+    colA, colB, colC = st.columns(3)
     with colA:
         show_features = st.checkbox("🧩 Features (Promoter/CDS) anzeigen", value=True)
     with colB:
         show_heatmap = st.checkbox("🌡️ Heatmap (GC% / AI-Score) anzeigen", value=True)
+    with colC:
+        detect_features = st.checkbox("🧠 Automatische Feature-Erkennung (GenBank)", value=True)
 
-    fasta_file = st.file_uploader("📂 FASTA-Datei hochladen", type=["fasta", "fa"])
-    if not fasta_file:
-        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte zu generieren.")
+    uploaded_file = st.file_uploader("📂 Datei hochladen (FASTA oder GenBank)", type=["fasta", "fa", "gb", "gbk"])
+
+    if not uploaded_file:
+        st.info("⬆️ Bitte lade eine Sequenzdatei hoch (.fasta oder .gbk), um die DNA-Karte zu generieren.")
     else:
-        # Datei speichern & lesen
-        with open("uploaded_advanced.fasta", "wb") as f:
-            f.write(fasta_file.getbuffer())
-        record = SeqIO.read("uploaded_advanced.fasta", "fasta")
+        # Datei speichern
+        file_path = "uploaded_sequence.tmp"
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        # GenBank oder FASTA einlesen
+        record = None
+        if uploaded_file.name.endswith((".gb", ".gbk")):
+            from Bio import SeqIO
+            record = SeqIO.read(file_path, "genbank")
+        else:
+            record = SeqIO.read(file_path, "fasta")
         seq_length = len(record.seq)
 
-        # Beispiel-Daten (künftig automatisch aus Primer-Design übernehmen)
+        # --- Automatische Feature-Erkennung aus GenBank ---
+        features = []
+        if detect_features and hasattr(record, "features"):
+            color_map = {
+                "gene": "#1f77b4",
+                "CDS": "#2ca02c",
+                "promoter": "#ff7f0e",
+                "misc_feature": "#9467bd",
+                "tRNA": "#8c564b",
+                "rRNA": "#e377c2",
+                "exon": "#17becf"
+            }
+            for f in record.features:
+                ftype = f.type.lower()
+                if ftype in color_map and "location" in dir(f):
+                    start = int(f.location.start)
+                    end = int(f.location.end)
+                    features.append({
+                        "name": ftype.upper(),
+                        "start": start,
+                        "end": end,
+                        "color": color_map[ftype]
+                    })
+        else:
+            # Default Beispiel-Daten
+            features = [
+                {"name": "Promoter", "start": 20, "end": 60, "color": "#ffa600"},
+                {"name": "CDS", "start": 80, "end": 480, "color": "#66b3ff"},
+            ]
+
+        # Beispiel-Primer (später KI-generiert)
         primers = [
             {"name": "Fwd1", "start": 120, "end": 140, "Tm": 59.2, "GC": 45, "score": 90, "strand": "+"},
             {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 72, "strand": "-"},
-        ]
-        features = [
-            {"name": "Promoter", "start": 20, "end": 60, "color": "#ffa600"},
-            {"name": "CDS", "start": 80, "end": 480, "color": "#66b3ff"},
         ]
 
         # --- Plot ---
         fig = go.Figure()
 
-        # 1️⃣ Heatmap (GC%-Band im Hintergrund)
+        # 1️⃣ Heatmap (schmal unter der DNA)
         if show_heatmap:
             heat = np.array([random.randint(40, 70) for _ in range(seq_length)], dtype=float)
-            z = np.vstack([heat, heat])
-            y_vals = [-0.12, 0.12]
+            z = np.expand_dims(heat, axis=0)
             fig.add_trace(go.Heatmap(
                 z=z,
                 x=list(range(seq_length)),
-                y=y_vals,
+                y=[-0.25],
                 colorscale="Viridis",
                 opacity=0.35,
                 showscale=True,
                 name="GC% / AI Heatmap",
-                hoverinfo="x+z"
+                hoverinfo="x+z",
+                colorbar=dict(thickness=12, len=0.5, y=0.7)
             ))
 
         # 2️⃣ DNA-Basislinie
@@ -151,13 +188,13 @@ elif menu == "🧬 Visual DNA Map":
             x=[0, seq_length],
             y=[0, 0],
             mode="lines",
-            line=dict(color="#d9d9d9", width=12),
+            line=dict(color="#bfbfbf", width=12),
             name="DNA",
             hoverinfo="skip"
         ))
 
-        # 3️⃣ Feature-Layer
-        if show_features:
+        # 3️⃣ Features
+        if show_features and features:
             for f in features:
                 fig.add_trace(go.Scatter(
                     x=[f["start"], f["end"]],
@@ -168,7 +205,7 @@ elif menu == "🧬 Visual DNA Map":
                     hovertemplate=f"{f['name']}<br>{f['start']}–{f['end']} bp<extra></extra>"
                 ))
 
-        # 4️⃣ Primer mit Richtung & Label
+        # 4️⃣ Primer
         for p in primers:
             color = "#00cc00" if p["strand"] == "+" else "#ff4d4d"
             arrow = "▶" if p["strand"] == "+" else "◀"
@@ -183,7 +220,6 @@ elif menu == "🧬 Visual DNA Map":
                 hovertemplate=(
                     f"<b>{p['name']}</b><br>"
                     f"Pos {p['start']}–{p['end']} bp<br>"
-                    f"Länge {p['end'] - p['start']} bp<br>"
                     f"Tm {p['Tm']} °C · GC {p['GC']} %<br>"
                     f"AI-Score {p['score']}<extra></extra>"
                 )
@@ -191,13 +227,14 @@ elif menu == "🧬 Visual DNA Map":
 
         # Layout
         fig.update_layout(
-            title="🧬 Geneious-Style Visual DNA Map with Primer Heatmap",
+            title="🧬 Geneious-Style Visual DNA Map with Primer Heatmap & Auto-Features",
             xaxis_title="Nukleotidposition (bp)",
-            yaxis=dict(visible=False, range=[-0.6, 0.6]),
+            yaxis=dict(visible=False, range=[-1, 1]),
             showlegend=True,
-            height=480,
+            height=420,
             plot_bgcolor="white",
-            margin=dict(l=20, r=20, t=60, b=20)
+            margin=dict(l=20, r=20, t=60, b=20),
+            hovermode="x unified"
         )
 
         st.success("✅ DNA-Karte generiert!")
@@ -241,4 +278,4 @@ elif menu == "📊 Reports & Export Center":
 
 # --- Footer ---
 st.markdown("---")
-st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.9 · Zweisprachig DE/EN")
+st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 3.0 · Visual DNA Map + Auto Feature Detection · Zweisprachig DE/EN")
