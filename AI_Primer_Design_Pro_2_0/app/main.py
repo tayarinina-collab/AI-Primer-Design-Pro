@@ -100,49 +100,75 @@ elif menu == "🧬 Visual DNA Map":
 
     st.title("🧬 Geneious-Style Visual DNA Map")
 
+    # UI-Optionen
+    colA, colB = st.columns(2)
+    with colA:
+        show_features = st.checkbox("🧩 Features (Promoter/CDS) anzeigen", value=True)
+    with colB:
+        show_heatmap = st.checkbox("🌡️ Heatmap (GC% / AI-Score) anzeigen", value=True)
+
     fasta_file = st.file_uploader("📂 FASTA-Datei hochladen", type=["fasta", "fa"])
-    if fasta_file:
+    if not fasta_file:
+        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte zu generieren.")
+    else:
+        # Datei speichern & lesen
         with open("uploaded_advanced.fasta", "wb") as f:
             f.write(fasta_file.getbuffer())
-
-        # Sequenz einlesen
         record = SeqIO.read("uploaded_advanced.fasta", "fasta")
         seq_length = len(record.seq)
 
-        # Beispiel-Daten (später dynamisch aus Primer-Design übernehmen)
+        # Beispiel-Daten (künftig automatisch aus Primer-Design übernehmen)
         primers = [
             {"name": "Fwd1", "start": 120, "end": 140, "Tm": 59.2, "GC": 45, "score": 90, "strand": "+"},
-            {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 72, "strand": "-"}
+            {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 72, "strand": "-"},
         ]
         features = [
             {"name": "Promoter", "start": 20, "end": 60, "color": "#ffa600"},
-            {"name": "CDS", "start": 80, "end": 480, "color": "#66b3ff"}
+            {"name": "CDS", "start": 80, "end": 480, "color": "#66b3ff"},
         ]
 
         # --- Plot ---
         fig = go.Figure()
 
-        # 1️⃣ DNA-Basislinie
+        # 1️⃣ Heatmap (GC%-Band im Hintergrund)
+        if show_heatmap:
+            heat = np.array([random.randint(40, 70) for _ in range(seq_length)], dtype=float)
+            z = np.vstack([heat, heat])
+            y_vals = [-0.12, 0.12]
+            fig.add_trace(go.Heatmap(
+                z=z,
+                x=list(range(seq_length)),
+                y=y_vals,
+                colorscale="Viridis",
+                opacity=0.35,
+                showscale=True,
+                name="GC% / AI Heatmap",
+                hoverinfo="x+z"
+            ))
+
+        # 2️⃣ DNA-Basislinie
         fig.add_trace(go.Scatter(
             x=[0, seq_length],
             y=[0, 0],
             mode="lines",
             line=dict(color="#d9d9d9", width=12),
-            name="DNA"
+            name="DNA",
+            hoverinfo="skip"
         ))
 
-        # 2️⃣ Feature-Layer (Promoter, CDS)
-        for f in features:
-            fig.add_trace(go.Scatter(
-                x=[f["start"], f["end"]],
-                y=[0, 0],
-                mode="lines",
-                line=dict(color=f["color"], width=16),
-                name=f["name"],
-                hovertext=f"{f['name']}<br>{f['start']}–{f['end']} bp"
-            ))
+        # 3️⃣ Feature-Layer
+        if show_features:
+            for f in features:
+                fig.add_trace(go.Scatter(
+                    x=[f["start"], f["end"]],
+                    y=[0, 0],
+                    mode="lines",
+                    line=dict(color=f["color"], width=16),
+                    name=f["name"],
+                    hovertemplate=f"{f['name']}<br>{f['start']}–{f['end']} bp<extra></extra>"
+                ))
 
-        # 3️⃣ Primer-Layer mit Richtung und Label
+        # 4️⃣ Primer mit Richtung & Label
         for p in primers:
             color = "#00cc00" if p["strand"] == "+" else "#ff4d4d"
             arrow = "▶" if p["strand"] == "+" else "◀"
@@ -154,42 +180,28 @@ elif menu == "🧬 Visual DNA Map":
                 text=f"{arrow} {p['name']}",
                 textposition="top center",
                 name=p["name"],
-                hovertext=(
+                hovertemplate=(
                     f"<b>{p['name']}</b><br>"
-                    f"Position {p['start']}–{p['end']} bp<br>"
+                    f"Pos {p['start']}–{p['end']} bp<br>"
                     f"Länge {p['end'] - p['start']} bp<br>"
                     f"Tm {p['Tm']} °C · GC {p['GC']} %<br>"
-                    f"AI-Score {p['score']}"
+                    f"AI-Score {p['score']}<extra></extra>"
                 )
             ))
 
-        # 4️⃣ Heatmap-Ebene (z. B. GC% oder AI-Score)
-        heat = [random.randint(40, 70) for _ in range(seq_length)]
-        fig.add_trace(go.Heatmap(
-            z=[heat],
-            x=list(range(seq_length)),
-            colorscale="Viridis",
-            opacity=0.35,
-            showscale=True,
-            name="GC% Heatmap"
-        ))
-
-        # 5️⃣ Layout
+        # Layout
         fig.update_layout(
             title="🧬 Geneious-Style Visual DNA Map with Primer Heatmap",
             xaxis_title="Nukleotidposition (bp)",
-            yaxis_visible=False,
+            yaxis=dict(visible=False, range=[-0.6, 0.6]),
             showlegend=True,
-            height=450,
+            height=480,
             plot_bgcolor="white",
             margin=dict(l=20, r=20, t=60, b=20)
         )
 
         st.success("✅ DNA-Karte generiert!")
         st.plotly_chart(fig, use_container_width=True)
-
-    else:
-        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte zu generieren.")
 
 # --- MODULE: Cloning & Assembly Tools ---
 elif menu == "🧫 Cloning & Assembly Tools":
