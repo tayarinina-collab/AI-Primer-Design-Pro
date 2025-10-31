@@ -15,7 +15,6 @@ from modules.plasmid_plus import run_plasmid_plus
 from modules.database_integration import run_database_integration
 from modules.data_management import run_data_management
 from modules.ui_layout import set_theme
-from modules.gene_map_viewer import visualize_dna_map   # 🧬 NEW IMPORT
 
 # --- Seiteneinstellungen ---
 st.set_page_config(
@@ -46,7 +45,7 @@ menu = st.sidebar.radio(
         "🧬 Sequence Management",
         "🧫 Primer Design",
         "🧪 Primer Design – Advanced",
-        "🧬 Visual DNA Map",                  # 🧩 NEW MODULE
+        "🧬 Visual DNA Map",
         "🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
         "🧫 Plasmid Designer",
@@ -94,24 +93,103 @@ elif menu == "🧪 Primer Design – Advanced":
 
 # --- MODULE: Visual DNA Map ---
 elif menu == "🧬 Visual DNA Map":
-    st.title("🧬 Visual DNA Map & Primer Heatmap")
+    import plotly.graph_objects as go
+    from Bio import SeqIO
+    import numpy as np
+    import random
 
-    fasta_file = st.file_uploader("📂 Lade eine FASTA-Datei hoch", type=["fasta", "fa"])
+    st.title("🧬 Geneious-Style Visual DNA Map")
+
+    fasta_file = st.file_uploader("📂 FASTA-Datei hochladen", type=["fasta", "fa"])
     if fasta_file:
-        with open("uploaded.fasta", "wb") as f:
+        with open("uploaded_advanced.fasta", "wb") as f:
             f.write(fasta_file.getbuffer())
 
-        # Beispiel-Primer (später dynamisch aus Primer-Design übernehmen)
+        # Sequenz einlesen
+        record = SeqIO.read("uploaded_advanced.fasta", "fasta")
+        seq_length = len(record.seq)
+
+        # Beispiel-Daten (später dynamisch aus Primer-Design übernehmen)
         primers = [
-            {"name": "Fwd1", "start": 120, "end": 140, "Tm": 59.2, "GC": 45, "score": 90},
-            {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 70},
+            {"name": "Fwd1", "start": 120, "end": 140, "Tm": 59.2, "GC": 45, "score": 90, "strand": "+"},
+            {"name": "Rev1", "start": 420, "end": 440, "Tm": 61.5, "GC": 52, "score": 72, "strand": "-"}
+        ]
+        features = [
+            {"name": "Promoter", "start": 20, "end": 60, "color": "#ffa600"},
+            {"name": "CDS", "start": 80, "end": 480, "color": "#66b3ff"}
         ]
 
-        st.success("✅ Datei geladen! DNA-Karte wird generiert...")
-        visualize_dna_map("uploaded.fasta", primers, color_by="score")
+        # --- Plot ---
+        fig = go.Figure()
+
+        # 1️⃣ DNA-Basislinie
+        fig.add_trace(go.Scatter(
+            x=[0, seq_length],
+            y=[0, 0],
+            mode="lines",
+            line=dict(color="#d9d9d9", width=12),
+            name="DNA"
+        ))
+
+        # 2️⃣ Feature-Layer (Promoter, CDS)
+        for f in features:
+            fig.add_trace(go.Scatter(
+                x=[f["start"], f["end"]],
+                y=[0, 0],
+                mode="lines",
+                line=dict(color=f["color"], width=16),
+                name=f["name"],
+                hovertext=f"{f['name']}<br>{f['start']}–{f['end']} bp"
+            ))
+
+        # 3️⃣ Primer-Layer mit Richtung und Label
+        for p in primers:
+            color = "#00cc00" if p["strand"] == "+" else "#ff4d4d"
+            arrow = "▶" if p["strand"] == "+" else "◀"
+            fig.add_trace(go.Scatter(
+                x=[p["start"], p["end"]],
+                y=[0, 0],
+                mode="lines+text",
+                line=dict(color=color, width=20, shape="hv"),
+                text=f"{arrow} {p['name']}",
+                textposition="top center",
+                name=p["name"],
+                hovertext=(
+                    f"<b>{p['name']}</b><br>"
+                    f"Position {p['start']}–{p['end']} bp<br>"
+                    f"Länge {p['end'] - p['start']} bp<br>"
+                    f"Tm {p['Tm']} °C · GC {p['GC']} %<br>"
+                    f"AI-Score {p['score']}"
+                )
+            ))
+
+        # 4️⃣ Heatmap-Ebene (z. B. GC% oder AI-Score)
+        heat = [random.randint(40, 70) for _ in range(seq_length)]
+        fig.add_trace(go.Heatmap(
+            z=[heat],
+            x=list(range(seq_length)),
+            colorscale="Viridis",
+            opacity=0.35,
+            showscale=True,
+            name="GC% Heatmap"
+        ))
+
+        # 5️⃣ Layout
+        fig.update_layout(
+            title="🧬 Geneious-Style Visual DNA Map with Primer Heatmap",
+            xaxis_title="Nukleotidposition (bp)",
+            yaxis_visible=False,
+            showlegend=True,
+            height=450,
+            plot_bgcolor="white",
+            margin=dict(l=20, r=20, t=60, b=20)
+        )
+
+        st.success("✅ DNA-Karte generiert!")
+        st.plotly_chart(fig, use_container_width=True)
 
     else:
-        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte anzuzeigen.")
+        st.info("⬆️ Bitte lade eine FASTA-Datei hoch, um die DNA-Karte zu generieren.")
 
 # --- MODULE: Cloning & Assembly Tools ---
 elif menu == "🧫 Cloning & Assembly Tools":
