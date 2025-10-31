@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 AI Primer Design Pro – Modul: Primer Design (wie Geneious Prime)
-Stabil & offline-fähig mit Primer3, Hairpin/Dimer-Analyse, Fallback für degenerierte Basen
+Stabil & offline-fähig mit Primer3, Hairpin/Dimer-Analyse, Degenerate Expansion (IUPAC)
 """
 import streamlit as st
 import primer3
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import itertools
 
 # --------------------------------------------------------------------------
 # Hilfsfunktionen
@@ -29,22 +30,34 @@ def dimer_dG(seq1: str, seq2: str = None) -> float:
         result = primer3.calcHomodimer(seq1)
     return result.dg if result.structure_found else 0
 
-def longest_homopolymer(seq: str) -> int:
-    max_run = run = 1
-    for i in range(1, len(seq)):
-        run = run + 1 if seq[i] == seq[i - 1] else 1
-        max_run = max(max_run, run)
-    return max_run
-
 def add_extension(seq: str, ext5: str = "") -> str:
     return ext5 + seq if ext5 else seq
+
+# --------------------------------------------------------------------------
+# Degenerate Mapping & Expansion
+# --------------------------------------------------------------------------
+IUPAC_MAP = {
+    "A": ["A"], "C": ["C"], "G": ["G"], "T": ["T"],
+    "R": ["A", "G"], "Y": ["C", "T"], "S": ["G", "C"], "W": ["A", "T"],
+    "K": ["G", "T"], "M": ["A", "C"], "B": ["C", "G", "T"], "D": ["A", "G", "T"],
+    "H": ["A", "C", "T"], "V": ["A", "C", "G"], "N": ["A", "T", "G", "C"]
+}
+
+def expand_degenerate(seq: str, limit: int = 128) -> list:
+    """Erzeugt konkrete Varianten aus degenerierten Sequenzen."""
+    bases = [IUPAC_MAP.get(b, [b]) for b in seq]
+    variants = list(itertools.product(*bases))
+    expanded = ["".join(v) for v in variants]
+    if len(expanded) > limit:
+        expanded = expanded[:limit]
+    return expanded
 
 # --------------------------------------------------------------------------
 # Hauptfunktion
 # --------------------------------------------------------------------------
 def run_primer_design():
     st.header("🧬 Primer Design (wie Geneious Prime)")
-    st.caption("Design & Analyse von Primern mit Thermodynamik, Hairpin-Check, Dimer-Analyse & Visualisierung")
+    st.caption("Design & Analyse von Primern mit Thermodynamik, Hairpin-Check, Dimer-Analyse & Degenerate Expansion")
 
     seq_input = st.text_area("DNA-Sequenz eingeben (5'→3'):", height=140)
     if not seq_input.strip():
@@ -74,7 +87,7 @@ def run_primer_design():
     qpcr_mode = st.checkbox("qPCR/TaqMan Probe mitentwerfen", value=False)
     visualize = st.checkbox("Grafische Visualisierung aktivieren", value=True)
 
-    # ---------------- Primer3 Konfiguration --------------------------------
+    # ---------------- Primer3 Parameter ------------------------------------
     args = {
         "PRIMER_OPT_SIZE": int(np.mean([length_min, length_max])),
         "PRIMER_MIN_SIZE": int(length_min),
@@ -90,32 +103,50 @@ def run_primer_design():
         "PRIMER_NUM_RETURN": 20
     }
 
-    # ---------------- Primer-Design starten --------------------------------
+    # ---------------- Design starten ---------------------------------------
     if st.button("🚀 Primer entwerfen"):
 
-        # 🧠 Degenerate Basen verhindern Absturz → Fallback-Modus
+        # 🧩 Degenerate-Modus mit automatischer Expansion
         if degenerate:
-            st.warning("⚠️ Primer3 unterstützt keine Thermoanalyse für degenerierte Basen. "
-                       "Wechsle in vereinfachten Fallback-Modus.")
+            st.warning("⚠️ Degenerate Primer erkannt – erweitere zu realen Varianten für Thermoanalyse.")
+
             seq_simple = seq[:200] if len(seq) > 200 else seq
             fwd = seq_simple[:20].replace("A", "R").replace("T", "Y")
             rev = seq_simple[-20:].replace("C", "S").replace("G", "K")
-            result = [{
-                "Index": 1,
-                "Left Primer": fwd,
-                "Right Primer": rev,
-                "Length (bp)": 20,
-                "Tm (°C)": 60.0,
-                "GC%": gc_percent(fwd),
-                "ΔG (Hairpin/Dimer)": 0.0,
-                "Amplicon Size": len(seq_simple)
-            }]
-            df = pd.DataFrame(result)
+
+            fwd_variants = expand_degenerate(fwd)
+            rev_variants = expand_degenerate(rev)
+            st.write(f"Gefundene Varianten: {len(fwd_variants)} (je Primer, max. 128)")
+
+            results = []
+            for fv in fwd_variants:
+                for rv in rev_variants:
+                    try:
+                        tm_f = round(primer3.calcTm(fv), 2)
+                        tm_r = round(primer3.calcTm(rv), 2)
+                        gc_f = gc_percent(fv)
+                        gc_r = gc_percent(rv)
+                        dg = round(min(hairpin_dG(fv), hairpin_dG(rv)), 2)
+                        results.append({
+                            "Forward": fv,
+                            "Reverse": rv,
+                            "Tm (°C)": round(np.mean([tm_f, tm_r]), 1),
+                            "GC%": round(np.mean([gc_f, gc_r]), 1),
+                            "ΔG (Hairpin)": dg
+                        })
+                    except Exception:
+                        continue
+
+            if not results:
+                st.error("❌ Keine gültigen Varianten gefunden.")
+                return
+
+            df = pd.DataFrame(results)
             st.dataframe(df, use_container_width=True)
-            st.info("Degenerate Primer erstellt (ohne Thermodynamik).")
+            st.success("✅ Degenerate Primer erfolgreich expandiert und analysiert.")
             return
 
-        # 🧪 Regulärer Primer3-Modus
+        # 🧪 Regulärer Primer3-Modus ----------------------------------------
         try:
             primers = primer3.bindings.designPrimers(
                 {"SEQUENCE_ID": "target", "SEQUENCE_TEMPLATE": seq},
@@ -129,10 +160,9 @@ def run_primer_design():
 
         total = primers.get("PRIMER_PAIR_NUM_RETURNED", 0)
         if total == 0:
-            st.warning("Keine Primer gefunden – bitte Parameter anpassen (z. B. Produktgröße oder GC-Bereich).")
+            st.warning("Keine Primer gefunden – bitte Parameter anpassen.")
             return
 
-        # ---------------- Ergebnisse sammeln --------------------------------
         result = []
         for i in range(total):
             left_seq = primers[f"PRIMER_LEFT_{i}_SEQUENCE"]
@@ -150,11 +180,8 @@ def run_primer_design():
             dg_dimer = min(dimer_dG(left_seq), dimer_dG(right_seq), dimer_dG(left_seq, right_seq))
             product = primers[f"PRIMER_PAIR_{i}_PRODUCT_SIZE"]
 
-            # GC-Clamp prüfen
             if gc_clamp and (left_seq[-1] not in "GC" or right_seq[-1] not in "GC"):
                 continue
-
-            # ΔG-Grenze prüfen
             if min(dg_hairpin, dg_dimer) < dg_threshold:
                 continue
 
@@ -170,14 +197,14 @@ def run_primer_design():
             })
 
         if not result:
-            st.warning("Keine Primer erfüllen die Thermodynamik-Grenzen.")
+            st.warning("Keine Primer erfüllen die Kriterien.")
             return
 
         df = pd.DataFrame(result)
         st.success(f"{len(df)} Primerpaare erfolgreich generiert ✅")
         st.dataframe(df, use_container_width=True)
 
-        # ---------------- ΔG Visualisierung ----------------------------------
+        # ---------------- Visualisierung ------------------------------------
         if visualize:
             st.subheader("ΔG & GC-Profil Visualisierung")
             fig, ax = plt.subplots(figsize=(6, 3))
