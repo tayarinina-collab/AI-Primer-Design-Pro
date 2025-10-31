@@ -5,11 +5,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import StringIO
 
+def detect_sequence_type(seq: str) -> str:
+    dna_bases = set("ATGCN")
+    rna_bases = set("AUGCN")
+    protein_letters = set("ACDEFGHIKLMNPQRSTVWY")
+
+    seq_clean = "".join(seq.upper().split())  # entfernt Leerzeichen & Zeilenumbrüche
+    seq_set = set(seq_clean)
+
+    if seq_set <= dna_bases:
+        return "DNA"
+    elif seq_set <= rna_bases:
+        return "RNA"
+    elif seq_set <= protein_letters:
+        return "Protein"
+    else:
+        return "Unbekannt"
+
 def run_sequence_management():
     st.header("🧬 Sequence Management")
     st.caption("Analyse und Verwaltung von DNA-, RNA- oder Protein-Sequenzen")
 
-    # Upload oder Texteingabe
     uploaded_file = st.file_uploader("Datei hochladen (FASTA, GenBank, TXT)", type=["fasta", "txt", "gb"])
     text_input = st.text_area("Oder Sequenz direkt einfügen:", height=150)
 
@@ -21,10 +37,11 @@ def run_sequence_management():
 
     if sequence_data:
         st.subheader("🔍 Sequenzanalyse")
-        seq = Seq(sequence_data.replace("\n", "").replace(" ", "").upper())
+        seq_str = sequence_data.replace("\n", "").replace(" ", "").upper()
+        seq = Seq(seq_str)
 
-        # Basiseigenschaften
-        seq_type = "Protein" if set(seq) <= set("ACDEFGHIKLMNPQRSTVWY") else "RNA" if "U" in seq else "DNA"
+        # 🧩 präzise Typ-Erkennung
+        seq_type = detect_sequence_type(seq_str)
         length = len(seq)
         gc_content = round(gc_fraction(seq) * 100, 2) if seq_type in ["DNA", "RNA"] else "N/A"
 
@@ -33,10 +50,11 @@ def run_sequence_management():
         st.write(f"**Länge:** {length} bp / aa")
         st.write(f"**GC-Gehalt:** {gc_content}%")
 
-        # GC-Profilplot
-        if seq_type in ["DNA", "RNA"]:
+        # GC-Profilplot (nur DNA/RNA)
+        if seq_type in ["DNA", "RNA"] and length >= 50:
             window = 50
-            gc_profile = [round(gc_fraction(seq[i:i+window]) * 100, 2) for i in range(0, len(seq)-window, window)]
+            gc_profile = [round(gc_fraction(seq[i:i+window]) * 100, 2)
+                          for i in range(0, len(seq)-window, window)]
             fig, ax = plt.subplots()
             ax.plot(gc_profile)
             ax.set_xlabel("Position (bp)")
