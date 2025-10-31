@@ -49,7 +49,6 @@ menu = st.sidebar.radio(
         "🧫 Cloning & Assembly Tools",
         "🧬 Protein Tools",
         "🧫 Plasmid Designer",
-        "🧬 Plasmid Plus",
         "🧫 Database & Reference Integration",
         "🧬 Data Management",
         "🌳 Alignment & Phylogeny",
@@ -264,10 +263,6 @@ elif menu == "🧬 Protein Tools":
 # --- MODULE: Plasmid Designer ---
 elif menu == "🧫 Plasmid Designer":
     run_plasmid_designer()
-
-# --- MODULE: Plasmid Plus ---
-elif menu == "🧬 Plasmid Plus":
-    run_plasmid_plus()
 
 # --- MODULE: Database & Reference Integration ---
 elif menu == "🧫 Database & Reference Integration":
