@@ -1,14 +1,22 @@
-# ==============================
-# 🧬 AI Primer Design Pro – Main App (v2.1)
-# ==============================
+# -*- coding: utf-8 -*-
 import streamlit as st
-import importlib
-import sys, os
 
-# --- Make sure the 'modules' path is available ---
-sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
+# --- Module Imports ---
+from modules.reports_export_center import run_reports_export_center
+from modules.ai_learning_chatbot import run_ai_learning_chatbot
+from modules.alignment_phylogeny import run_alignment_phylogeny
+from modules.sequence_management import run_sequence_management
+from modules.primer_design import run_primer_design
+from modules.primer_design_advanced import run_primer_design_advanced
+from modules.cloning_tools import run_cloning_tools
+from modules.protein_tools import run_protein_tools
+from modules.plasmid_designer import run_plasmid_designer
+from modules.plasmid_plus import run_plasmid_plus
+from modules.database_integration import run_database_integration
+from modules.data_management import run_data_management
+from modules.ui_layout import set_theme
 
-# --- Page config ---
+# --- Seiteneinstellungen ---
 st.set_page_config(
     page_title="AI Primer Design Pro",
     page_icon="🧬",
@@ -16,101 +24,106 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Sidebar: Sprache / Language ---
-lang = st.sidebar.radio("🌐 Sprache / Language", ("Deutsch", "English"), horizontal=True)
+# --- Theme Setup ---
+set_theme()
 
-# --- Sidebar: Theme Switch ---
-theme_mode = st.sidebar.radio("🎨 Theme", ("🌙 Dark Mode", "☀️ Light Mode"), horizontal=True)
+# --- Sidebar Titel ---
+st.sidebar.markdown("<h2 style='text-align:center;'>🧬 AI Primer Design Pro</h2>", unsafe_allow_html=True)
+st.sidebar.caption("Intelligente Bioinformatik-Plattform für moderne Labore")
+st.sidebar.markdown("---")
 
-# --- Sidebar Navigation ---
-st.sidebar.markdown("## 🧩 Module")
+# --- Sprachumschalter ---
+language = st.sidebar.radio("🌍 Sprache / Language", ["Deutsch", "English"], horizontal=True)
+st.sidebar.markdown("---")
 
-modules = {
-    "🏠 Overview / Übersicht": "overview",
-    "🧬 Sequence Management": "sequence_management",
-    "🧫 Primer Design": "primer_design",
-    "🧪 Primer Design – Advanced": "primer_design_advanced",
-    "🧫 Cloning & Assembly Tools": "cloning_tools",
-    "🧬 Protein Tools": "protein_tools",
-    "🧫 Database & Reference Integration": "database_integration",
-    "🧫 Plasmid Karte": "plasmid_designer",
-    "🧬 Plasmid Plus": "plasmid_plus",
-    "📊 Reports": "reports",
-    "⚙️ Settings / About": "settings_about",
-}
-
-choice = st.sidebar.radio("🔬 Select Module", list(modules.keys()))
-
-# --- Theme CSS ---
-if theme_mode == "🌙 Dark Mode":
-    st.markdown(
-        """
-        <style>
-        .stApp, body {
-            background-color: #0e1117 !important;
-            color: white !important;
-        }
-        .stSidebar {
-            background-color: #111 !important;
-        }
-        h1, h2, h3, h4, h5, h6, p, div, span, label {
-            color: white !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """
-        <style>
-        .stApp, body {
-            background-color: #f8f9fa !important;
-            color: #111 !important;
-        }
-        .stSidebar {
-            background-color: #ffffff !important;
-        }
-        h1, h2, h3, h4, h5, h6, p, div, span, label {
-            color: #111 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# --- App Header ---
-st.markdown(
-    """
-    <h1 style='text-align:center;'>🧬 AI Primer Design Pro</h1>
-    <p style='text-align:center; font-size:18px;'>
-        Intelligente Bioinformatik-Plattform für DNA-, RNA- & Protein-Analysen.<br>
-        Combining AI, Automation & Visualization for smarter research.
-    </p>
-    """,
-    unsafe_allow_html=True,
+# --- Navigation mit visuellen Icons ---
+st.sidebar.markdown("### 🧩 Module auswählen / Select Module")
+menu = st.sidebar.radio(
+    "Modul-Liste",
+    [
+        "🏠 Übersicht",
+        "🧬 Sequence Management",
+        "🧫 Primer Design",
+        "🧪 Primer Design – Advanced",
+        "🧫 Cloning & Assembly Tools",
+        "🧬 Protein Tools",
+        "🧫 Plasmid Designer",
+        "🧬 Plasmid Plus",
+        "🧫 Database & Reference Integration",
+        "🧬 Data Management",
+        "🌳 Alignment & Phylogeny",
+        "🤖 AI Learning & Chatbot System",
+        "📊 Reports & Export Center",
+    ],
 )
 
-# --- Dynamische Modul-Ladung ---
-try:
-    selected_module = modules[choice]
-    module = importlib.import_module(f"modules.{selected_module}")
-
-    run_function_name = f"run_{selected_module}"
-    if hasattr(module, run_function_name):
-        getattr(module, run_function_name)()
+# --- HAUPTINHALT ---
+if menu == "🏠 Übersicht":
+    if language == "Deutsch":
+        st.title("Willkommen bei AI Primer Design Pro 🧬")
+        st.markdown("""
+        Willkommen bei **AI Primer Design Pro**,  
+        deiner intelligenten Bioinformatik-Plattform für DNA-, RNA- und Protein-Analysen.  
+        Hier kombinieren sich **KI**, **Laborautomatisierung** und **visuelle Werkzeuge**,  
+        um Forschungsprozesse zu vereinfachen und zu beschleunigen.
+        """)
+        st.info("🌗 Tipp: Du kannst im Seitenmenü zwischen **Dark- und Light-Mode** wechseln.")
     else:
-        st.warning(f"⚠️ Modul '{choice}' gefunden, aber keine Funktion '{run_function_name}()' in der Datei.")
-except Exception as e:
-    st.error(f"❌ Fehler beim Laden von '{choice}': {e}")
+        st.title("Welcome to AI Primer Design Pro 🧬")
+        st.markdown("""
+        Welcome to **AI Primer Design Pro**,  
+        your intelligent bioinformatics platform for DNA, RNA, and protein analysis.  
+        Combining **AI**, **automation**, and **visual lab tools**  
+        to simplify and accelerate research workflows.
+        """)
+        st.info("🌗 Tip: You can switch between **Dark and Light mode** in the sidebar.")
+
+# --- MODULE: Sequence Management ---
+elif menu == "🧬 Sequence Management":
+    run_sequence_management()
+
+# --- MODULE: Primer Design ---
+elif menu == "🧫 Primer Design":
+    run_primer_design()
+
+# --- MODULE: Primer Design – Advanced ---
+elif menu == "🧪 Primer Design – Advanced":
+    run_primer_design_advanced()
+
+# --- MODULE: Cloning & Assembly Tools ---
+elif menu == "🧫 Cloning & Assembly Tools":
+    run_cloning_tools()
+
+# --- MODULE: Protein Tools ---
+elif menu == "🧬 Protein Tools":
+    run_protein_tools()
+
+# --- MODULE: Plasmid Designer ---
+elif menu == "🧫 Plasmid Designer":
+    run_plasmid_designer()
+
+# --- MODULE: Plasmid Plus ---
+elif menu == "🧬 Plasmid Plus":
+    run_plasmid_plus()
+
+# --- MODULE: Database & Reference Integration ---
+elif menu == "🧫 Database & Reference Integration":
+    run_database_integration()
+
+# --- MODULE: Data Management ---
+elif menu == "🧬 Data Management":
+    run_data_management()
+
+# --- MODULE: Alignment & Phylogeny ---
+elif menu == "🌳 Alignment & Phylogeny":
+    run_alignment_phylogeny()
+
+elif menu == "🤖 AI Learning & Chatbot System":
+    run_ai_learning_chatbot()
+
+elif menu == "📊 Reports & Export Center":
+    run_reports_export_center()
 
 # --- Footer ---
-st.markdown(
-    """
-    <hr>
-    <p style='text-align:center; color:gray; font-size:14px;'>
-    🧠 Developed with ❤️ in Hamburg · Version 2.1 · Bilingual DE/EN
-    </p>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("---")
+st.caption("🧠 Entwickelt mit ❤️ in Hamburg · Version 2.9 · Zweisprachig DE/EN")
