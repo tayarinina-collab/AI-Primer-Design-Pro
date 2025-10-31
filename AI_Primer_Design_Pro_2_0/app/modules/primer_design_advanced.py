@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Primer Design Advanced (Geneious-Pro Style) – v3.2 AI-Ready
-Funktionen:
-- Primer Design via primer3 (Thermoanalyse & Fallback)
-- GC- und Tm-optimiertes Design
-- 5′-Extensions, GC-Clamp, Degenerate-Fallback
-- qPCR-Probe (heuristisch)
-- Manuelles Primer-Scoring
-- AI-Ergebnisinterpretation (optional)
+AI Primer Design Pro – Primer Design Advanced (v3.3)
+Features:
+✅ Primer-Design via primer3 (Tm, GC, ΔG, Homodimer, Hairpin)
+✅ 5′-Extensions, GC-Clamp, Degenerate-Fallback
+✅ qPCR-Probe optional
+✅ korrekte Primerposition & Amplicon-Visualisierung (Geneious-Style)
+✅ KI-Ergebnisinterpretation (OpenAI optional)
 """
 
-import os, io, textwrap
+import os
+import io
+import textwrap
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -92,8 +93,8 @@ EXT_PRESETS = {
 
 # ============================= MAIN FUNCTION =============================
 def run_primer_design_advanced():
-    st.title("🧪 Primer Design – Advanced (Geneious Pro)")
-    st.caption("Import/Export, Off-Target-Check, Degenerate-Design, 5′-Extensions, qPCR-Probe, Visualisierung")
+    st.title("🧪 Primer Design – Advanced (Geneious Pro Style)")
+    st.caption("Primer-Design mit Thermoanalyse, GC-Clamp, 5′-Extensions, Visualisierung & AI-Erklärung")
 
     # --- Eingaben --------------------------------------------------------
     st.subheader("📥 Eingaben")
@@ -137,7 +138,6 @@ def run_primer_design_advanced():
     gc_min, gc_max = st.slider("GC-Gehalt (%)", 20, 80, (40, 60))
     gc_clamp = st.checkbox("3'-GC-Clamp bevorzugen", True)
     max_homopoly = st.slider("Max. Homopolymer-Länge", 3, 8, 5)
-    allow_degenerate = st.checkbox("Degenerate-Primer erlauben (IUPAC)", False)
 
     ex1, ex2 = st.columns(2)
     with ex1:
@@ -153,7 +153,7 @@ def run_primer_design_advanced():
     quencher = st.selectbox("Quencher", ["BHQ1", "BHQ2", "TAMRA", "Iowa Black FQ"], index=0)
 
     # ====================== DESIGN START ===========================
-    if st.button("🚀 Automatisches Design starten (primer3)"):
+    if st.button("🚀 Primer entwerfen"):
         if not P3_OK:
             st.error("❌ primer3-py nicht installiert.")
             return
@@ -182,7 +182,7 @@ def run_primer_design_advanced():
             "PRIMER_MIN_GC": gc_min,
             "PRIMER_MAX_GC": gc_max,
             "PRIMER_PRODUCT_SIZE_RANGE": [list((prod_min, prod_max))],
-            "PRIMER_NUM_RETURN": 24,
+            "PRIMER_NUM_RETURN": 10,
             "PRIMER_EXPLAIN_FLAG": 1,
             "PRIMER_SALT_MONOVALENT": monoval,
             "PRIMER_SALT_DIVALENT": dival,
@@ -209,7 +209,6 @@ def run_primer_design_advanced():
             lseq_full, rseq_full = extL + lseq, extR + rseq
             tm_l, tm_r = design.get(f"PRIMER_LEFT_{i}_TM"), design.get(f"PRIMER_RIGHT_{i}_TM")
             gc_l, gc_r = gc_percent(lseq_full), gc_percent(rseq_full)
-
             dghp = min(dG_hairpin(lseq_full), dG_hairpin(rseq_full))
             dgself = min(dG_homodimer(lseq_full), dG_homodimer(rseq_full))
             dgcross = dG_heterodimer(lseq_full, rseq_full)
@@ -240,6 +239,52 @@ def run_primer_design_advanced():
         df = pd.DataFrame(pairs)
         st.success(f"✅ {len(df)} Primerpaare erfolgreich generiert")
         st.dataframe(df, use_container_width=True)
+
+        # ================== Amplicon-Visualisierung ==================
+        st.subheader("🧬 Amplicon-Visualisierung (Geneious-Style)")
+
+        best = df.iloc[0]
+        left_pos = design.get("PRIMER_LEFT_0")[0]
+        left_len = design.get("PRIMER_LEFT_0")[1]
+        right_pos = design.get("PRIMER_RIGHT_0")[0]
+        right_len = design.get("PRIMER_RIGHT_0")[1]
+
+        amplicon_start = left_pos
+        amplicon_end = right_pos + right_len
+        amplicon_seq = target_seq[amplicon_start:amplicon_end]
+
+        fig, ax = plt.subplots(figsize=(8, 1.8))
+        ax.set_xlim(0, len(target_seq))
+        ax.set_ylim(0, 1)
+        ax.set_yticks([])
+        ax.set_xlabel("Position (bp)")
+        ax.set_title("DNA Map mit Primer-Positionen")
+
+        ax.axvspan(left_pos, left_pos + left_len, ymin=0.6, ymax=0.95, color="tab:blue", alpha=0.4, label="Forward Primer (→)")
+        ax.axvspan(right_pos, right_pos + right_len, ymin=0.6, ymax=0.95, color="tab:orange", alpha=0.4, label="Reverse Primer (←)")
+        ax.axvspan(amplicon_start, amplicon_end, ymin=0.25, ymax=0.55, color="tab:green", alpha=0.25, label="Amplicon")
+
+        ax.annotate("→", xy=(left_pos + left_len / 2, 0.9), ha="center", va="center", fontsize=10, color="tab:blue")
+        ax.annotate("←", xy=(right_pos + right_len / 2, 0.9), ha="center", va="center", fontsize=10, color="tab:orange")
+
+        ax.legend(loc="upper right", ncol=3, fontsize=8, frameon=False)
+        st.pyplot(fig, use_container_width=True)
+
+        st.code(textwrap.fill(amplicon_seq, 80), language="text")
+        st.download_button(
+            "⬇️ Amplicon als FASTA",
+            f">amplicon_{best['Rank']}\n{amplicon_seq}\n",
+            file_name=f"amplicon_{best['Rank']}.fasta"
+        )
+
+        # ================== qPCR-Probe (optional) ==================
+        if enable_probe:
+            st.subheader("🧫 qPCR-Probe (zentriert)")
+            center = (amplicon_start + amplicon_end) // 2
+            probe_len = 25
+            probe_seq = target_seq[center - probe_len // 2:center + probe_len // 2]
+            st.write(f"**Probe:** {probe_seq}")
+            st.caption(f"Reporter: **{reporter}**, Quencher: **{quencher}**")
 
     # ================== AI-Zusammenfassung ===========================
     st.markdown("---")
