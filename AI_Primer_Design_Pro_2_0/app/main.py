@@ -11,7 +11,6 @@ from modules.primer_design_advanced import run_primer_design_advanced
 from modules.cloning_tools import run_cloning_tools
 from modules.protein_tools import run_protein_tools
 from modules.plasmid_designer import run_plasmid_designer
-from modules.plasmid_plus import run_plasmid_plus
 from modules.database_integration import run_database_integration
 from modules.data_management import run_data_management
 from modules.ui_layout import set_theme
@@ -92,7 +91,6 @@ elif menu == "🧬 Visual DNA Map":
     import plotly.graph_objects as go
     from Bio import SeqIO
     import numpy as np
-    import random
 
     st.title("🧬 Geneious-Style Visual DNA Map")
 
@@ -135,14 +133,12 @@ elif menu == "🧬 Visual DNA Map":
                 b = min(seq_length, i + half)
                 sub = seq[a:b]
                 gc = (sub.count("G") + sub.count("C")) / max(1, len(sub))
-                scores.append(gc)  # 0..1
+                scores.append(gc)
             return np.array(scores, dtype=float)
 
-        # ---------- Heatmap-Farben (schmale Shapes unter DNA) ----------
+        # ---------- Heatmap-Farben ----------
         def color_from_score(s):
-            # einfache Viridis-nahe Mischung: 0→lila, 1→gelbgrün
-            # Alpha 0.35 für Hintergrund
-            r = int(68 + s * (253 - 68))   # grobe Approx an Viridis
+            r = int(68 + s * (253 - 68))
             g = int(1 + s * (231 - 1))
             b = int(84 + s * (37 - 84))
             return f"rgba({r},{g},{b},0.35)"
@@ -167,47 +163,42 @@ elif menu == "🧬 Visual DNA Map":
                     if start < end:
                         features.append({"name": ftype.upper(), "start": start, "end": end, "color": color_map[ftype]})
         else:
-            # Fallback-Beispiele
             features = [
                 {"name": "Promoter", "start": 20, "end": 60, "color": "#ffb000"},
-                {"name": "CDS", "start": 80, "end": min(480, seq_length-1), "color": "#66b3ff"},
+                {"name": "CDS", "start": 80, "end": min(480, seq_length - 1), "color": "#66b3ff"},
             ]
 
-        # ---------- Demo-Primer (später aus Design übernehmen) ----------
+        # ---------- Demo-Primer ----------
         primers = [
-            {"name": "Fwd1", "start": max(0, int(seq_length*0.25)-10), "end": max(1, int(seq_length*0.25)+10),
+            {"name": "Fwd1", "start": max(0, int(seq_length * 0.25) - 10), "end": max(1, int(seq_length * 0.25) + 10),
              "Tm": 59.2, "GC": 45, "score": 90, "strand": "+"},
-            {"name": "Rev1", "start": max(0, int(seq_length*0.9)-10), "end": max(1, int(seq_length*0.9)+10),
+            {"name": "Rev1", "start": max(0, int(seq_length * 0.9) - 10), "end": max(1, int(seq_length * 0.9) + 10),
              "Tm": 61.5, "GC": 52, "score": 72, "strand": "-"},
         ]
 
         # ---------- Plot ----------
         fig = go.Figure()
 
-        # 1) Heatmap als SCHMALES Band via Shapes (kein go.Heatmap mehr)
         if show_heatmap:
-            scores = sliding_gc_scores(record.seq, window=15)  # 0..1
+            scores = sliding_gc_scores(record.seq, window=15)
             shapes = []
-            y0, y1 = -0.25, 0.25  # dünnes Band
+            y0, y1 = -0.25, 0.25
             for i, s in enumerate(scores):
                 shapes.append(dict(
-                    type="rect",
-                    xref="x", yref="y",
-                    x0=i, x1=i+1, y0=y0, y1=y1,
+                    type="rect", xref="x", yref="y",
+                    x0=i, x1=i + 1, y0=y0, y1=y1,
                     line=dict(width=0),
                     fillcolor=color_from_score(s),
                     layer="below",
                 ))
             fig.update_layout(shapes=shapes)
 
-        # 2) DNA-Linie
         fig.add_trace(go.Scatter(
             x=[0, seq_length], y=[0, 0],
             mode="lines", line=dict(color="#bfbfbf", width=12),
             name="DNA", hoverinfo="skip"
         ))
 
-        # 3) Features (Promoter/CDS/…)
         if show_features and features:
             for f in features:
                 fig.add_trace(go.Scatter(
@@ -218,7 +209,6 @@ elif menu == "🧬 Visual DNA Map":
                     hovertemplate=f"{f['name']}<br>{f['start']}–{f['end']} bp<extra></extra>"
                 ))
 
-        # 4) Primer mit Richtung & Label
         for p in primers:
             color = "#00cc00" if p["strand"] == "+" else "#ff4d4d"
             arrow = "▶" if p["strand"] == "+" else "◀"
@@ -237,7 +227,6 @@ elif menu == "🧬 Visual DNA Map":
                 )
             ))
 
-        # Layout
         fig.update_layout(
             title="🧬 Geneious-Style Visual DNA Map (thin-band Heatmap + Auto-Features)",
             xaxis_title="Nukleotidposition (bp)",
