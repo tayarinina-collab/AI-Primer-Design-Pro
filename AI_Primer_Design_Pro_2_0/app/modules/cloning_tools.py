@@ -35,9 +35,7 @@ def gc(seq: str) -> float:
     return 0 if not s else 100.0 * (s.count("G") + s.count("C")) / len(s)
 
 def linear_feature_plot(length: int, features: List[Tuple[int, int, str]]) -> go.Figure:
-    """
-    Simple linear map: features = [(start, end, label), ...]
-    """
+    """Simple linear map: features = [(start, end, label), ...]"""
     fig = go.Figure()
     fig.add_shape(type="rect", x0=0, x1=length, y0=0.35, y1=0.65,
                   line=dict(color="#999"), fillcolor="#e8f5e9")
@@ -51,15 +49,11 @@ def linear_feature_plot(length: int, features: List[Tuple[int, int, str]]) -> go
     return fig
 
 def circular_map(length: int, features: List[Tuple[int, int, str]]) -> go.Figure:
-    """
-    Simple circular plasmid map using polar coordinates.
-    """
+    """Simple circular plasmid map using polar coordinates."""
     fig = go.Figure()
-    # backbone
     fig.add_trace(go.Scatterpolar(r=[1, 1], theta=[0, 360], mode="lines",
                                   line=dict(width=8, color="#81c784"),
                                   hoverinfo="skip", showlegend=False))
-    # features
     for s, e, name in features:
         theta0 = 360.0 * (s/length)
         theta1 = 360.0 * (e/length)
@@ -118,17 +112,59 @@ def run_cloning_tools():
         seq1 = st.text_area("Fragment 1 (5'→3')", height=120, key="gib1")
         seq2 = st.text_area("Fragment 2 (5'→3')", height=120, key="gib2")
         overlap = st.slider("Overlap (bp)", 10, 60, 20)
+        allow_revcomp = st.checkbox("Reverse Complement prüfen", value=True)
+
+        # Hilfsfunktionen
+        def sanitize(s: str) -> str:
+            return ''.join(ch for ch in s.upper() if ch in "ACGT")
+
+        def revc(s: str) -> str:
+            trans = str.maketrans("ACGT", "TGCA")
+            return s.translate(trans)[::-1]
+
+        def try_overlap(a: str, b: str, k: int) -> str | None:
+            """prüft, ob Ende(a) == Anfang(b)"""
+            if len(a) >= k and len(b) >= k and a[-k:] == b[:k]:
+                return a + b[k:]
+            return None
+
         if st.button("Gibson simulieren"):
-            if seq1 and seq2:
-                ov = seq1[-overlap:]
-                if ov.upper() == seq2[:overlap].upper():
-                    assembled = seq1 + seq2[overlap:]
-                    st.success("Overlap erkannt – Contig erzeugt")
+            s1 = sanitize(seq1)
+            s2 = sanitize(seq2)
+
+            if not s1 or not s2:
+                st.info("Bitte beide Fragmente eingeben.")
+            elif overlap <= 0:
+                st.warning("Overlap muss > 0 sein.")
+            else:
+                assembled = None
+                orientation = None
+
+                # direkte Orientierung
+                if (a := try_overlap(s1, s2, overlap)):
+                    assembled, orientation = a, "F1→F2"
+                elif (a := try_overlap(s2, s1, overlap)):
+                    assembled, orientation = a, "F2→F1"
+
+                # reverse complements
+                elif allow_revcomp:
+                    s1_rc, s2_rc = revc(s1), revc(s2)
+                    for lbl, x, y in [
+                        ("F1→RC(F2)", s1, s2_rc),
+                        ("RC(F2)→F1", s2_rc, s1),
+                        ("F2→RC(F1)", s2, s1_rc),
+                        ("RC(F1)→F2", s1_rc, s2)
+                    ]:
+                        if (a := try_overlap(x, y, overlap)):
+                            assembled, orientation = a, lbl
+                            break
+
+                if assembled:
+                    st.success(f"Overlap erkannt – Contig erzeugt ({orientation})")
                     st.code(assembled)
+                    st.write(f"Länge: {len(assembled)} bp · GC: {gc(assembled):.1f}%")
                 else:
                     st.warning("Kein passender Overlap gefunden.")
-            else:
-                st.info("Bitte beide Fragmente eingeben.")
 
     # ---------- Golden Gate ----------
     with tabs[1]:
@@ -154,9 +190,8 @@ def run_cloning_tools():
             else:
                 seq = recs[0].seq
                 analysis = Restriction.Analysis(Restriction.AllEnzymes, seq)
-                res = analysis.full()  # dict: {Enzym: [sites]}
+                res = analysis.full()
                 st.write(f"{len(res)} Enzyme mit Schnittstellen gefunden.")
-                # kleine Tabelle
                 rows = [{"Enzym": str(k), "Sites": ",".join(map(str, v))} for k, v in res.items() if v]
                 st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
@@ -183,7 +218,7 @@ def run_cloning_tools():
         circular = st.checkbox("Zirkulär darstellen", True)
         if st.button("Plasmid anzeigen"):
             dna = seq
-            if ">" in seq:  # FASTA heuristik
+            if ">" in seq:
                 recs = list(SeqIO.parse(io.StringIO(seq), "fasta"))
                 dna = str(recs[0].seq) if recs else ""
             if dna:
@@ -211,24 +246,21 @@ def run_cloning_tools():
                 rec = records[0]
                 seq = str(rec.seq).upper()
                 found = []
-                # vorhandene GenBank-Features mitnehmen
                 if getattr(rec, "features", None):
                     for f in rec.features:
                         if isinstance(f.location, FeatureLocation):
                             found.append((int(f.location.start), int(f.location.end), f.type))
-                # heuristische Motive
                 for name, pats in MOTIFS.items():
                     for p in pats:
                         for s, e in search_motif(seq, p):
                             found.append((s, e, name))
-                # Darstellung
                 if not found:
                     st.info("Keine Motive/Features erkannt.")
                 else:
                     found.sort(key=lambda x: x[0])
                     df = pd.DataFrame(found, columns=["Start","Ende","Feature"])
                     st.dataframe(df, use_container_width=True)
-                    fig = circular_map(len(seq), found[:20])  # viele beschneiden
+                    fig = circular_map(len(seq), found[:20])
                     st.plotly_chart(fig, use_container_width=True)
 
     # ---------- Cloning-Primer Generator ----------
@@ -245,18 +277,15 @@ def run_cloning_tools():
             elif not seq:
                 st.info("Template eingeben.")
             else:
-                # minimaler primer3-call (wir nutzen nur left/right SINGLE primer)
                 res = primer3.bindings.designPrimers(
                     {"SEQUENCE_TEMPLATE": seq},
-                    {
-                        "PRIMER_OPT_SIZE": int(opt_len),
-                        "PRIMER_MIN_SIZE": 14,
-                        "PRIMER_MAX_SIZE": 35,
-                        "PRIMER_OPT_TM": float(tm_target),
-                        "PRIMER_MIN_TM": float(tm_target-5),
-                        "PRIMER_MAX_TM": float(tm_target+5),
-                        "PRIMER_NUM_RETURN": 1
-                    }
+                    {"PRIMER_OPT_SIZE": int(opt_len),
+                     "PRIMER_MIN_SIZE": 14,
+                     "PRIMER_MAX_SIZE": 35,
+                     "PRIMER_OPT_TM": float(tm_target),
+                     "PRIMER_MIN_TM": float(tm_target-5),
+                     "PRIMER_MAX_TM": float(tm_target+5),
+                     "PRIMER_NUM_RETURN": 1}
                 )
                 L = res.get("PRIMER_LEFT_0_SEQUENCE", "")
                 R = res.get("PRIMER_RIGHT_0_SEQUENCE", "")
@@ -276,7 +305,6 @@ def run_cloning_tools():
     with tabs[7]:
         st.subheader("Gateway / TA / TOPO – Checks")
         seq = st.text_area("Insert-Sequenz", height=120, key="gt_seq")
-        # Gateway attB-Motive (kurz)
         attb_motifs = {"attB1": "GGGGACAAGTTTGTACAAAAAAGCAGGCT",
                        "attB2": "GGGGACCACTTTGTACAAGAAAGCTGGGT"}
         if st.button("Analysieren"):
@@ -285,15 +313,12 @@ def run_cloning_tools():
             else:
                 msgs = []
                 s = seq.upper()
-                # TA-Klonierung: A-overhang-kompatible PCR-Produkte → oft A am 3'-Ende
                 if s.endswith("A"):
                     msgs.append("TA-compatible: Insert endet mit 'A'.")
                 else:
                     msgs.append("TA-Hinweis: Insert endet nicht mit 'A'.")
-                # TOPO (blunt/TA) – hier einfache Hinweise
                 if s.startswith("CACC"):
                     msgs.append("TOPO (Directional) Hinweis: 5'-CACC gefunden.")
-                # Gateway
                 for name, motif in attb_motifs.items():
                     if motif in s:
                         msgs.append(f"Gateway: {name}-Motiv erkannt.")
