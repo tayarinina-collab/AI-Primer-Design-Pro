@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Primer Design Advanced (Geneious-Pro Style) – stabilisierte Version
+Primer Design Advanced (Geneious-Pro Style) – v3.2 AI-Ready
 Funktionen:
-- Primer Design via primer3 (mit Thermoanalyse)
-- Import (FASTA, CSV, XLSX)
+- Primer Design via primer3 (Thermoanalyse & Fallback)
+- GC- und Tm-optimiertes Design
+- 5′-Extensions, GC-Clamp, Degenerate-Fallback
+- qPCR-Probe (heuristisch)
 - Manuelles Primer-Scoring
-- 5'-Extensions, GC-Clamp, Degenerate-Option
-- Thermo-Fallback, Off-Target-Warnung
-- qPCR-Probe, Visualisierung, AI-Zusammenfassung
+- AI-Ergebnisinterpretation (optional)
 """
 
 import os, io, textwrap
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-# ===== Optional Libraries =====
+# ===== Optionale Bibliotheken =====
 try:
     import openai
     OPENAI_OK = True
@@ -30,12 +30,6 @@ try:
     P3_OK = True
 except Exception:
     P3_OK = False
-
-try:
-    import openpyxl
-    XLSX_OK = True
-except Exception:
-    XLSX_OK = False
 
 
 # ============================= UTILITIES =============================
@@ -96,7 +90,7 @@ EXT_PRESETS = {
 }
 
 
-# ============================= MAIN MODULE =============================
+# ============================= MAIN FUNCTION =============================
 def run_primer_design_advanced():
     st.title("🧪 Primer Design – Advanced (Geneious Pro)")
     st.caption("Import/Export, Off-Target-Check, Degenerate-Design, 5′-Extensions, qPCR-Probe, Visualisierung")
@@ -139,13 +133,11 @@ def run_primer_design_advanced():
         dival = st.number_input("Mg²⁺ (mM)", 0.0, 10.0, 1.5, step=0.1)
         dntp = st.number_input("dNTP (mM)", 0.0, 5.0, 0.6, step=0.1)
 
-    # --- Erweiterte Optionen --------------------------------------------
     st.subheader("🧩 Erweiterte Optionen")
     gc_min, gc_max = st.slider("GC-Gehalt (%)", 20, 80, (40, 60))
     gc_clamp = st.checkbox("3'-GC-Clamp bevorzugen", True)
     max_homopoly = st.slider("Max. Homopolymer-Länge", 3, 8, 5)
     allow_degenerate = st.checkbox("Degenerate-Primer erlauben (IUPAC)", False)
-    mismatches = st.slider("Off-Target-Suche: erlaubte Mismatches", 0, 3, 2)
 
     ex1, ex2 = st.columns(2)
     with ex1:
@@ -169,24 +161,18 @@ def run_primer_design_advanced():
             st.warning("Bitte DNA-Sequenz eingeben oder FASTA hochladen.")
             return
 
-        # --- Sicherheitsprüfungen ---
         if len(target_seq) < 50:
             st.error("❌ Sequenz zu kurz (<50 bp) – bitte längere DNA eingeben.")
-            st.stop()
+            return
 
         if any(x <= 0 for x in [monoval, dival, dntp]):
             monoval, dival, dntp = 50.0, 1.5, 0.6
-
-        if allow_degenerate and any(b not in "ACGT" for b in target_seq):
-            st.warning("⚠️ Degenerate Basen erkannt – Thermoanalyse nicht möglich. Wechsle zu einfachem Modus.")
-            allow_degenerate = False
 
         # --- Extensions bestimmen ---
         extL, extR = EXT_PRESETS.get(preset, ("", ""))
         if custom_left: extL = custom_left.upper().replace("U", "T")
         if custom_right: extR = custom_right.upper().replace("U", "T")
 
-        # --- Primer3 Argumente ---
         args = {
             "PRIMER_OPT_SIZE": popt,
             "PRIMER_MIN_SIZE": pmin,
@@ -210,7 +196,7 @@ def run_primer_design_advanced():
                 args
             )
         except ValueError:
-            st.error("❌ Thermoanalyse-Fehler: Überprüfe Degenerate-Basen, GC% oder Produktgröße.")
+            st.error("❌ Thermoanalyse-Fehler: Überprüfe Degenerate-Basen oder GC-Bereich.")
             return
 
         pairs = []
@@ -227,7 +213,6 @@ def run_primer_design_advanced():
             dghp = min(dG_hairpin(lseq_full), dG_hairpin(rseq_full))
             dgself = min(dG_homodimer(lseq_full), dG_homodimer(rseq_full))
             dgcross = dG_heterodimer(lseq_full, rseq_full)
-
             homo = max(longest_homopolymer(lseq_full), longest_homopolymer(rseq_full))
             if homo > max_homopoly: continue
             if gc_clamp and (lseq_full[-1] not in "GC" or rseq_full[-1] not in "GC"): continue
@@ -255,3 +240,35 @@ def run_primer_design_advanced():
         df = pd.DataFrame(pairs)
         st.success(f"✅ {len(df)} Primerpaare erfolgreich generiert")
         st.dataframe(df, use_container_width=True)
+
+    # ================== AI-Zusammenfassung ===========================
+    st.markdown("---")
+    st.subheader("🤖 AI-Zusammenfassung (optional)")
+
+    ai_btn = st.button("Ergebnisse erklären lassen")
+    if ai_btn:
+        summary = (
+            "Dieses Modul entwirft Primerpaare mittels primer3, "
+            "analysiert Tm, GC-Gehalt und Dimer-/Hairpin-ΔG-Werte "
+            "und bewertet jedes Paar nach Stabilität und Spezifität. "
+            "Hohe Scores deuten auf balancierte Primer mit ähnlichen Tm-Werten, "
+            "mittlerem GC-Gehalt (40–60%) und geringer Dimerneigung hin."
+        )
+
+        if OPENAI_OK and os.getenv("OPENAI_API_KEY"):
+            try:
+                openai.api_key = os.getenv("OPENAI_API_KEY")
+                prompt = (
+                    "Erkläre einem Laboranwender kurz auf Deutsch, "
+                    "wie die erzeugten Primer bewertet werden (Tm, GC, ΔG, Amplicon-Größe) "
+                    "und gib Tipps zur Optimierung."
+                )
+                resp = openai.ChatCompletion.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "system", "content": prompt}]
+                )
+                summary = resp["choices"][0]["message"]["content"]
+            except Exception as e:
+                st.warning(f"⚠️ KI-Erklärung nicht verfügbar: {e}")
+
+        st.info(summary)
