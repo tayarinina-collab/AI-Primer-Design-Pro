@@ -111,17 +111,19 @@ def ki_param_vorschlaege(seq: str, args: dict, gc_clamp: bool, max_homopoly: int
     reasons = []
     sugg = args.copy()
 
-    # 1) Produktgröße passend zur Sequenz/breiter machen
-    lo, hi = sugg["PRIMER_PRODUCT_SIZE_RANGE"][0]
-    if stx["len"] < 120:
-        lo2, hi2 = 40, max(60, stx["len"] - 10)
-        sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
-        reasons.append(f"Sequenz sehr kurz ({stx['len']} bp) → Produktgröße auf {lo2}–{hi2} bp gesetzt.")
-    else:
-        lo2 = min(70, lo)
-        hi2 = max(600, hi)
-        sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
-        reasons.append(f"Produktgröße verbreitert auf {lo2}–{hi2} bp.")
+  # 1) Produktgröße passend zur Sequenz / breiter machen
+lo, hi = sugg["PRIMER_PRODUCT_SIZE_RANGE"][0]
+if stx["len"] < 120:
+    lo2 = 40  # absolute Untergrenze
+    hi2 = max(80, min(400, stx["len"] - 5))
+    sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
+    reasons.append(f"Sequenz sehr kurz ({stx['len']} bp) → Produktgröße angepasst auf {lo2}–{hi2} bp.")
+else:
+    lo2 = min(60, lo)
+    hi2 = max(600, hi)
+    sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
+    reasons.append(f"Produktgröße verbreitert auf {lo2}–{hi2} bp.")
+
 
     # 2) GC-Band an Sequenz-GC anlehnen
     seq_gc = stx["gc"]
