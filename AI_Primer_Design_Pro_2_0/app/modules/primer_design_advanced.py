@@ -111,19 +111,18 @@ def ki_param_vorschlaege(seq: str, args: dict, gc_clamp: bool, max_homopoly: int
     reasons = []
     sugg = args.copy()
 
-  # 1) Produktgröße passend zur Sequenz / breiter machen
-lo, hi = sugg["PRIMER_PRODUCT_SIZE_RANGE"][0]
-if stx["len"] < 120:
-    lo2 = 40  # absolute Untergrenze
-    hi2 = max(80, min(400, stx["len"] - 5))
-    sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
-    reasons.append(f"Sequenz sehr kurz ({stx['len']} bp) → Produktgröße angepasst auf {lo2}–{hi2} bp.")
-else:
-    lo2 = min(60, lo)
-    hi2 = max(600, hi)
-    sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
-    reasons.append(f"Produktgröße verbreitert auf {lo2}–{hi2} bp.")
-
+    # 1) Produktgröße passend zur Sequenz / breiter machen
+    lo, hi = sugg["PRIMER_PRODUCT_SIZE_RANGE"][0]
+    if stx["len"] < 120:
+        lo2 = 40  # absolute Untergrenze (gewünscht)
+        hi2 = max(80, min(400, stx["len"] - 5))
+        sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
+        reasons.append(f"Sequenz sehr kurz ({stx['len']} bp) → Produktgröße angepasst auf {lo2}–{hi2} bp.")
+    else:
+        lo2 = min(60, lo)
+        hi2 = max(600, hi)
+        sugg["PRIMER_PRODUCT_SIZE_RANGE"] = [[lo2, hi2]]
+        reasons.append(f"Produktgröße verbreitert auf {lo2}–{hi2} bp.")
 
     # 2) GC-Band an Sequenz-GC anlehnen
     seq_gc = stx["gc"]
@@ -221,7 +220,8 @@ def run_primer_design_advanced():
             P_MIN, P_OPT, P_MAX = 18, 20, 25
     with p2:
         TM_MIN, TM_MAX = st.slider("Tm-Bereich (°C)", 48, 75, (58, 62))
-        PROD_MIN, PROD_MAX = st.slider("Produktgröße (bp)", 60, 1500, (100, 400))
+        # ► Min. Produktgröße ab 40 bp (gewünscht)
+        PROD_MIN, PROD_MAX = st.slider("Produktgröße (bp)", 40, 1500, (100, 400))
     with p3:
         SALT = st.number_input("Na⁺/K⁺ (mM)", 0.0, 500.0, 50.0, step=1.0)
         MG = st.number_input("Mg²⁺ (mM)", 0.0, 10.0, 1.5, step=0.1)
