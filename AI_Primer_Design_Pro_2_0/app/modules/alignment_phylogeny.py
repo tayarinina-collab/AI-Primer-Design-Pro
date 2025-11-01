@@ -8,7 +8,7 @@ Alignment & Phylogeny Modul
 
 import streamlit as st
 from Bio import Align, Phylo, SeqIO
-from Bio.Align import substitution_matrices
+from Bio.Align import substitution_matrices, MultipleSeqAlignment
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor, DistanceCalculator
 from io import StringIO
 import matplotlib.pyplot as plt
@@ -17,6 +17,9 @@ def run_alignment_phylogeny():
     st.title("🌳 Alignment & Phylogeny")
     st.caption("Multiple- und Paarweise Alignments, mit Baumvisualisierung und Export")
 
+    # ------------------------------------------------------------
+    # FASTA Upload
+    # ------------------------------------------------------------
     st.markdown("### 📤 Sequenzen hochladen (FASTA)")
     fasta_file = st.file_uploader("FASTA-Datei auswählen", type=["fasta", "fa", "txt"])
 
@@ -24,9 +27,13 @@ def run_alignment_phylogeny():
         st.info("Bitte eine FASTA-Datei hochladen, um zu starten.")
         return
 
-    # ✅ FASTA-Datei korrekt lesen (Textmodus, nicht Bytes!)
-    fasta_text = fasta_file.getvalue().decode("utf-8")
-    sequences = list(SeqIO.parse(StringIO(fasta_text), "fasta"))
+    # ✅ Bytes → UTF-8 Text konvertieren (Fix für Bio.StreamModeError)
+    try:
+        fasta_text = fasta_file.getvalue().decode("utf-8")
+        sequences = list(SeqIO.parse(StringIO(fasta_text), "fasta"))
+    except Exception as e:
+        st.error(f"Fehler beim Lesen der FASTA-Datei: {e}")
+        return
 
     if not sequences:
         st.error("❌ Keine gültigen FASTA-Sequenzen gefunden.")
@@ -40,9 +47,9 @@ def run_alignment_phylogeny():
     st.markdown("### ⚙️ Alignment-Typ auswählen")
     mode = st.radio("Alignment-Modus", ["Multiple Sequence Alignment", "Pairwise Alignment"], horizontal=False)
 
-    # -----------------------------
-    # Multiple Alignment (Demo)
-    # -----------------------------
+    # ------------------------------------------------------------
+    # Multiple Sequence Alignment (Demo)
+    # ------------------------------------------------------------
     if mode == "Multiple Sequence Alignment":
         st.subheader("🧬 Multiple Alignment (MUSCLE / MAFFT / ClustalΩ)")
         method = st.selectbox("Algorithmus wählen", ["MUSCLE (Demo)", "Clustal Omega (Demo)", "MAFFT (Demo)"])
@@ -57,18 +64,22 @@ def run_alignment_phylogeny():
                 ref = sequences[0]
                 aligned = [ref]
                 for seq in sequences[1:]:
-                    alignments = aligner.align(ref.seq, seq.seq)
+                    _ = aligner.align(ref.seq, seq.seq)
                     aligned.append(seq)
 
                 st.success(f"Alignment mit {method} simuliert ✅")
-                st.text_area("Resultat (FASTA-like)", "\n".join(f">{s.id}\n{s.seq}" for s in aligned), height=250)
+                st.text_area(
+                    "Resultat (FASTA-like)",
+                    "\n".join(f">{s.id}\n{s.seq}" for s in aligned),
+                    height=250
+                )
 
             except Exception as e:
                 st.error(f"Fehler beim Alignment: {e}")
 
-    # -----------------------------
+    # ------------------------------------------------------------
     # Pairwise Alignment
-    # -----------------------------
+    # ------------------------------------------------------------
     else:
         st.subheader("🧩 Paarweises Alignment (Needleman-Wunsch / Smith-Waterman)")
         method = st.selectbox("Algorithmus wählen", ["Needleman-Wunsch (global)", "Smith-Waterman (lokal)"])
@@ -89,31 +100,31 @@ def run_alignment_phylogeny():
             except Exception as e:
                 st.error(f"Fehler beim Alignment: {e}")
 
-    # -----------------------------
+    # ------------------------------------------------------------
     # Phylogenetischer Baum
-    # -----------------------------
+    # ------------------------------------------------------------
     st.markdown("---")
     st.subheader("🌿 Phylogenetischer Baum (Neighbor Joining / UPGMA)")
 
     if st.button("🌳 Baum erzeugen"):
         try:
-            # Alignments simulieren für Baumkonstruktion
-            output = StringIO()
-            SeqIO.write(sequences, output, "fasta")
-            output.seek(0)
+            # Dummy MultipleSeqAlignment erzeugen
+            aln = MultipleSeqAlignment(sequences)
 
+            # Distanzmatrix berechnen
             calculator = DistanceCalculator("identity")
-            aln = list(SeqIO.parse(StringIO(fasta_text), "fasta"))
             distance_matrix = calculator.get_distance(aln)
 
+            # Baumkonstruktion
             constructor = DistanceTreeConstructor()
             nj_tree = constructor.nj(distance_matrix)
 
+            # Visualisierung
             fig = plt.figure(figsize=(6, 6))
             Phylo.draw(nj_tree, do_show=False)
             st.pyplot(fig, use_container_width=True)
 
-            # Export
+            # Export (Newick)
             newick_buf = StringIO()
             Phylo.write(nj_tree, newick_buf, "newick")
             st.download_button(
